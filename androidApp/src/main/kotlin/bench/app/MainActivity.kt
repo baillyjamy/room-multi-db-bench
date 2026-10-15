@@ -7,7 +7,7 @@ import bench.large.dispatch
 import kotlinx.coroutines.runBlocking
 import java.io.File
 
-/** Launched with `am start -S` (fresh process) and extras `mode` (seed|run|large-seed|large-run) and `scenario`. */
+/** Launched with `am start -S` (fresh process) and extras `mode` (seed|run|large-seed|large-run|light-seed|light-run) and `scenario`. */
 class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

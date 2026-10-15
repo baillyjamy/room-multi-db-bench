@@ -2,9 +2,9 @@
 """Summarise room-multi-db-bench JSONL results as Markdown.
 
 Usage: python3 scripts/analyze.py results/*.jsonl > RESULTS.md
-(results/<platform>[-sqldelight][-large].jsonl: Room by default, SQLDelight with the -sqldelight suffix)
+(results/<platform>[-sqldelight][-large|-light].jsonl: Room by default, SQLDelight with the -sqldelight suffix)
 
-Reads "run" lines (small suite, baseline S1) and "large-run" lines (large-volume
+Reads "run" lines (small suite, baseline S1) and "large-run" / "light-run" lines (calendar
 suite, scenarios L1/L2, baseline L1). Seed lines are ignored.
 """
 import json
@@ -14,7 +14,7 @@ from collections import defaultdict
 
 SCENARIOS = ["S1", "S2", "S5", "S10"]
 LARGE_SCENARIOS = ["L1", "L2"]
-RUN_MODES = ("run", "large-run")
+RUN_MODES = ("run", "large-run", "light-run")
 TIME_KEYS = ["openMs", "observeMs", "writeAllMs", "writeOneMs", "readMs"]
 LARGE_TIME_KEYS = [
     "openMs", "weekQueryMs", "monthQueryMs", "agendaJoinMs", "searchContactsMs",
@@ -129,7 +129,7 @@ def render(path, runs):
 
     platforms = sorted({str(r["platform"]) for r in runs if r.get("platform")})
     engine = "SQLDelight" if any(r.get("engine") == "sqldelight" for r in runs) else "Room"
-    title = f"{engine} · " + (", ".join(platforms) if platforms else path) + (" · large volume" if large else "")
+    title = f"{engine} · " + (", ".join(platforms) if platforms else path) + (" · light volume (~12 MB)" if any(r.get("mode") == "light-run" for r in runs) else " · large volume (~120 MB)" if large else "")
     sqlite = sorted({str(r["sqlite"]) for r in runs if r.get("sqlite")})
     counts = ", ".join(f"{s}: {len(by_scenario[s])}" for s in scenarios) or "no runs"
     out.append(f"## {title}")
@@ -137,7 +137,7 @@ def render(path, runs):
     out.append(f"Source: `{path}` — runs per scenario: {counts}" + (f" — SQLite {', '.join(sqlite)}" if sqlite else ""))
     out.append("")
     if not runs:
-        out.append("_No `run` / `large-run` lines found._")
+        out.append("_No `run` / `large-run` / `light-run` lines found._")
         out.append("")
         return out
 

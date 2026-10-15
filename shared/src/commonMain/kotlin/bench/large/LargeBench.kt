@@ -26,12 +26,16 @@ import kotlin.time.TimeSource
  * All data is generated from fixed seeds, so both layouts must return identical results (checksum).
  */
 
-const val CONTACTS = 20_000
+/** Volume of the calendar suite. Same schema, queries and seeds; only the row counts change. */
+class Volume(val mode: String, val contacts: Int, val events: Int, val syncEvents: Int, val syncContacts: Int)
+
+/** ~120 MB: a heavy calendar account. */
+val LARGE = Volume("large", contacts = 20_000, events = 200_000, syncEvents = 5_000, syncContacts = 2_000)
+/** ~12 MB: a modest account, 10x less data (same order of magnitude as the light S1-S10 suite). */
+val LIGHT = Volume("light", contacts = 2_000, events = 20_000, syncEvents = 500, syncContacts = 200)
+
 const val CALENDARS = 10
-const val EVENTS = 200_000
 const val SYNC_CALENDAR_ID = 11L
-const val SYNC_EVENTS = 5_000
-const val SYNC_CONTACTS = 2_000
 const val BATCH = 5_000
 const val IN_CHUNK = 900
 
@@ -83,20 +87,20 @@ private fun event(id: Long, calendarId: Long, r: Random, span: Long): EventEntit
     )
 }
 
-private fun attendeesOf(eventId: Long, r: Random): List<AttendeeEntity> = List(r.nextInt(6)) {
-    val email = if (r.nextInt(5) == 0) "ext${r.nextInt(50_000)}@other.org" else "user${r.nextLong(1, CONTACTS + 1L)}@example.com"
+private fun attendeesOf(v: Volume, eventId: Long, r: Random): List<AttendeeEntity> = List(r.nextInt(6)) {
+    val email = if (r.nextInt(5) == 0) "ext${r.nextInt(50_000)}@other.org" else "user${r.nextLong(1, v.contacts + 1L)}@example.com"
     AttendeeEntity(eventId = eventId, email = email, status = r.nextInt(4))
 }
 
-/** The 5 000 events of the "sync" calendar, regenerated identically every time (stable DB size across runs). */
-private fun syncBatch(): Pair<List<EventEntity>, List<AttendeeEntity>> {
+/** The events of the "sync" calendar (5 000 in LARGE), regenerated identically every time (stable DB size across runs). */
+private fun syncBatch(v: Volume): Pair<List<EventEntity>, List<AttendeeEntity>> {
     val r = Random(7)
-    val events = List(SYNC_EVENTS) { event(900_001L + it, SYNC_CALENDAR_ID, r, 1_826 * DAY) }
-    return events to events.flatMap { attendeesOf(it.id, r) }
+    val events = List(v.syncEvents) { event(900_001L + it, SYNC_CALENDAR_ID, r, 1_826 * DAY) }
+    return events to events.flatMap { attendeesOf(v, it.id, r) }
 }
 
-private fun syncContacts(): List<ContactEntity> {
-    return List(SYNC_CONTACTS) { contact(it * 10L + 1, generation = 1) }
+private fun syncContacts(v: Volume): List<ContactEntity> {
+    return List(v.syncContacts) { contact(it * 10L + 1, generation = 1) }
 }
 
 /** Same data, same queries, whatever the library. L1 = one database file, L2 = contacts file + calendar file. */
@@ -175,32 +179,32 @@ private suspend fun sizeBytes(db: RoomDatabase): Long = db.useReaderConnection {
     pages * size
 }
 
-suspend fun largeSeed(scenario: String, baseDir: String): String {
-    val dir = dataDir(baseDir, scenario)
+suspend fun largeSeed(v: Volume, scenario: String, baseDir: String): String {
+    val dir = dataDir("$baseDir/${v.mode}", scenario)
     deleteDir(dir)
     makeDir(dir)
     val h = openLarge(scenario, dir)
     val ms = timedMs {
-        (1L..CONTACTS).chunked(BATCH).forEach { ids -> h.upsertContacts(ids.map { contact(it) }) }
+        (1L..v.contacts).chunked(BATCH).forEach { ids -> h.upsertContacts(ids.map { contact(it) }) }
         h.insertCalendars((1L..SYNC_CALENDAR_ID).map { CalendarEntity(it, "Calendar $it", "#${it.toString().padStart(6, '0')}") })
         val re = Random(2)
-        (1L..EVENTS).chunked(BATCH).forEach { ids ->
+        (1L..v.events).chunked(BATCH).forEach { ids ->
             val events = ids.map { event(it, 1 + (it % CALENDARS), re, 1_826 * DAY) }
-            val attendees = events.flatMap { attendeesOf(it.id, re) }
+            val attendees = events.flatMap { attendeesOf(v, it.id, re) }
             h.insertEvents(events, attendees)
         }
-        syncBatch().let { (e, a) -> h.replaceCalendar(SYNC_CALENDAR_ID, e, a) }
+        syncBatch(v).let { (e, a) -> h.replaceCalendar(SYNC_CALENDAR_ID, e, a) }
     }
-    val result = header("large-seed", scenario) + ""","seedMs":$ms,""" +
+    val result = header("${v.mode}-seed", scenario) + ""","seedMs":$ms,""" +
         """"contacts":${h.countContacts()},"events":${h.countEvents()},"attendees":${h.countAttendees()},"dbSizeMb":${h.sizeMb()}}"""
     h.close()
     return result
 }
 
-suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope {
-    val dir = dataDir(baseDir, scenario)
-    val contactsBatch = syncContacts()
-    val calendarBatch = syncBatch()
+suspend fun largeRun(v: Volume, scenario: String, baseDir: String): String = coroutineScope {
+    val dir = dataDir("$baseDir/${v.mode}", scenario)
+    val contactsBatch = syncContacts(v)
+    val calendarBatch = syncBatch(v)
     fullGc()
     val m0 = memory()
     var checksum = 0L
@@ -257,7 +261,7 @@ suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope
     h.close()
 
     buildString {
-        append(header("large-run", scenario) + ""","dbCount":$dbCount,"sqlite":"$sqlite"""")
+        append(header("${v.mode}-run", scenario) + ""","dbCount":$dbCount,"sqlite":"$sqlite"""")
         append(""","openMs":$openMs,"weekQueryMs":$weekQueryMs,"monthQueryMs":$monthQueryMs,"agendaJoinMs":$agendaJoinMs""")
         append(""","searchContactsMs":$searchContactsMs,"syncContactsMs":$syncContactsMs,"syncCalendarMs":$syncCalendarMs,"parallelSyncMs":$parallelSyncMs""")
         append(""","checksum":$checksum,"dbSizeMb":$dbSizeMb""")
@@ -272,7 +276,9 @@ suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope
 suspend fun dispatch(mode: String, scenario: String, dir: String): String = when (mode) {
     "seed" -> bench.seed(scenario, dir)
     "run" -> bench.run(scenario, dir)
-    "large-seed" -> largeSeed(scenario, dir)
-    "large-run" -> largeRun(scenario, dir)
+    "large-seed" -> largeSeed(LARGE, scenario, dir)
+    "large-run" -> largeRun(LARGE, scenario, dir)
+    "light-seed" -> largeSeed(LIGHT, scenario, dir)
+    "light-run" -> largeRun(LIGHT, scenario, dir)
     else -> error("unknown mode $mode")
 }

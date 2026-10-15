@@ -28,6 +28,16 @@ Pour **2 bases** (le cas contacts + calendrier), par rapport à une base unique 
 | **Les deux synchros en parallèle** | **−17 ms (−10 %)** | **−29 ms (−10 %)** | **−12 ms (−7 %)** | **−16 ms (−9 %)** |
 | Mémoire pire cas | +5,8 Mo | +7,8 Mo | +6,5 Mo | +30 Mo (RSS, natif : le heap Java est identique) |
 
+**Light** (même app calendrier, compte modeste ~12 Mo : 2 000 contacts, 20 500 événements, ~51 000 participants, soit 10× moins). L2 vs L1, médianes sur 20 runs, checksums identiques.
+
+| | Android | iOS app | macOS natif | JVM desktop |
+|---|---:|---:|---:|---:|
+| Ouverture | ≈ (−5 ms, bruit) | +1,8 ms | +1,5 ms | ≈ (bruit JVM) |
+| Vues semaine, recherche de contacts | ≈ | ≈ | ≈ | ≈ |
+| **Agenda 12 mois + noms des contacts** | **+30 ms (+63 %)** | **+11 ms (+48 %)** | **+11 ms (+50 %)** | **+21 ms (+91 %)** |
+| **Les deux synchros en parallèle** | **−4 ms (−30 %)** | **−3 ms (−22 %)** | **−2 ms (−20 %)** | **−1 ms (−15 %)** |
+| Mémoire pire cas | +2,6 Mo | +4,8 Mo | +4,5 Mo | +4,9 Mo (RSS) |
+
 ### SQLDelight
 
 Mêmes scénarios, mêmes données, mêmes requêtes SQL, mêmes réglages (WAL, `synchronous=NORMAL`), drivers officiels de chaque plateforme. Médianes sur 20 runs ; les checksums sont identiques à ceux de Room.
@@ -41,6 +51,9 @@ Mêmes scénarios, mêmes données, mêmes requêtes SQL, mêmes réglages (WAL,
 | Gros volume : ouverture | +21 ms | +6 ms | +1 ms | ≈ |
 | Gros volume : **agenda + noms des contacts** | **+116 ms (+35 %)** | **+135 ms (+39 %)** | **+131 ms (+39 %)** | **+190 ms (+56 %)** |
 | Gros volume : **synchros en parallèle** | **−10 ms (−7 %)** | **−15 ms (−6 %)** | **−10 ms (−6 %)** | **−21 ms (−9 %)** |
+| Light : ouverture | +24 ms | +2 ms | +1 ms | ≈ |
+| Light : **agenda + noms des contacts** | **+34 ms (+70 %)** | **+18 ms (+67 %)** | **+15 ms (+54 %)** | **+29 ms (+76 %)** |
+| Light : **synchros en parallèle** | **−7 ms (−30 %)** | **−3 ms (−24 %)** | **−2 ms (−22 %)** | **−6 ms (−21 %)** |
 
 **Room vs SQLDelight** (une seule base, valeurs absolues, médianes) : aucune bibliothèque n'est plus rapide partout.
 
@@ -65,6 +78,7 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 
 - **Le vrai coût de 2 bases est fonctionnel :** on perd le `JOIN` SQL entre contacts et événements. L'agenda doit faire une 2e requête et une jointure en mémoire, ce qui coûte +19 à +36 % sur cette requête, soit 5 à 10 ms par mois affiché.
 - **En contrepartie,** des synchros contacts et calendrier simultanées ne se bloquent plus mutuellement (−8 à −10 %).
+- **Sur un compte modeste (light, ~12 Mo), le profil est identique :** le surcoût relatif de l'agenda est plus élevé (+48 à +91 %), parce que la 2e requête et la jointure en mémoire pèsent plus face à une requête SQL très courte. En absolu, il ne représente que **+11 à +34 ms pour 12 mois**, soit 1 à 3 ms par mois affiché. Le gain des synchros parallèles est lui aussi plus marqué en relatif (−15 à −30 %), mais de quelques ms seulement.
 - **Les 4 plateformes donnent le même profil** (Android, iOS, macOS, JVM) : c'est le moteur SQLite qui décide, pas la plateforme.
 
 **Room vs SQLDelight :**
@@ -114,13 +128,23 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 | `readMs` | 8 coroutines concurrentes lisent les 200 dernières lignes de chaque table (×10), puis font un scan complet. Toutes les connexions s'ouvrent et les caches se remplissent |
 | `*OpenKb` / `*EndKb` | Augmentation de la mémoire par rapport au début du process, après un GC, mesurée **après l'ouverture** puis **en fin de run** |
 
-**Suite « gros volume »** (`shared/src/commonMain/kotlin/bench/large/`) : une vraie volumétrie de calendrier.
+**Suite calendrier** (`shared/src/commonMain/kotlin/bench/large/`) : une vraie volumétrie de calendrier, mesurée en gros volume et en light.
 
 - **Données** (graines fixes, identiques dans les deux scénarios) :
   - 20 000 contacts ;
   - 10 calendriers avec 200 000 événements sur 5 ans, plus un calendrier « synchro » de 5 000 événements ;
   - environ 513 000 participants, dont 80 % sont des contacts ;
   - au total, environ 120 Mo.
+- **Deux volumes, même code et mêmes requêtes** (`Volume.LARGE` / `Volume.LIGHT` dans `LargeBench.kt`) :
+
+| | Gros volume (`large-*`) | Light (`light-*`) |
+|---|---:|---:|
+| Contacts | 20 000 | 2 000 |
+| Événements (10 calendriers + « synchro ») | 200 000 + 5 000 | 20 000 + 500 |
+| Participants | ~513 000 | ~51 000 |
+| Synchro contacts / calendrier | 2 000 / 5 000 | 200 / 500 |
+| Taille sur disque | ~120 Mo | ~11,7 Mo |
+
 - **Index :** `events(calendarId, startMs)`, `attendees(eventId)`, `attendees(email)`, `contacts(email)`, `contacts(name)`.
 - **Scénarios :** **L1** = 1 base. **L2** = 2 bases (contacts / calendrier).
 
@@ -131,7 +155,7 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 | `monthQueryMs` | 12 vues « mois » sur les 10 calendriers |
 | `agendaJoinMs` | 12 mois d'agenda avec le nom du contact de chaque participant. **L1 :** un `JOIN` SQL. **L2 :** une requête calendrier, puis `WHERE email IN (…)` par paquets de 900 dans la base contacts, puis une jointure en mémoire |
 | `searchContactsMs` | 100 recherches de contacts par préfixe |
-| `syncContactsMs` / `syncCalendarMs` | Upsert de 2 000 contacts / remplacement des 5 000 événements du calendrier « synchro » (1 transaction chacun, rejoués à l'identique pour que la base ne grossisse pas) |
+| `syncContactsMs` / `syncCalendarMs` | Upsert de 10 % des contacts / remplacement des événements du calendrier « synchro » (1 transaction chacun, rejoués à l'identique pour que la base ne grossisse pas) |
 | `parallelSyncMs` | Les deux synchros en même temps. **L1 :** un seul writer partagé. **L2 :** un writer par base |
 | `checksum` | Empreinte de tous les résultats lus. Elle doit être **identique** pour L1 et L2 |
 
@@ -148,7 +172,7 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 
 ## Résultats
 
-**Rapport visuel : [baillyjamy.github.io/room-multi-db-bench](https://baillyjamy.github.io/room-multi-db-bench/)** (`index.html`) : onglets **Light** (petit jeu de données) / **Gros volume** (~120 Mo) et **Room** / **SQLDelight** (régénérer : `python3 scripts/report.py`).
+**Rapport visuel : [baillyjamy.github.io/room-multi-db-bench](https://baillyjamy.github.io/room-multi-db-bench/)** (`index.html`) : onglets **Light** (~12 Mo, plus la suite S1…S10 du coût fixe) / **Gros volume** (~120 Mo) et **Room** / **SQLDelight** (régénérer : `python3 scripts/report.py`).
 
 Tableaux complets, Room et SQLDelight (médiane et Q1–Q3, écart par rapport à S1 / L1) : **[RESULTS.md](RESULTS.md)**. Données brutes, une ligne JSON par run : [`results/`](results/).
 
@@ -178,17 +202,24 @@ RUNS=20 ./scripts/run_android.sh   # ANDROID_SERIAL=... pour choisir l'appareil
 RUNS=20 TARGET=macos ./scripts/run_desktop.sh
 RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
 # Suite gros volume (L1, L2) -> results/*-large.jsonl
-export PREFIX=large- SCENARIOS="L1 L2"
+export PREFIX=large-   # scénarios L1 L2 par défaut quand PREFIX est défini
 RUNS=20 ./scripts/run_ios.sh && RUNS=20 POLLS=600 ./scripts/run_android.sh
 RUNS=20 TARGET=macos ./scripts/run_desktop.sh && RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
 
-# Même chose avec SQLDelight : ENGINE=sqldelight -> results/*-sqldelight[-large].jsonl (les résultats Room ne sont pas touchés)
-unset PREFIX SCENARIOS
+# Suite light (L1, L2 sur ~12 Mo) -> results/*-light.jsonl
+export PREFIX=light-
+RUNS=20 ./scripts/run_ios.sh && RUNS=20 POLLS=300 ./scripts/run_android.sh
+RUNS=20 TARGET=macos ./scripts/run_desktop.sh && RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
+
+# Même chose avec SQLDelight : ENGINE=sqldelight -> results/*-sqldelight[-large|-light].jsonl (les résultats Room ne sont pas touchés)
+unset PREFIX
 ENGINE=sqldelight RUNS=20 ./scripts/run_ios.sh && ENGINE=sqldelight RUNS=20 ./scripts/run_android.sh
 ENGINE=sqldelight RUNS=20 TARGET=macos ./scripts/run_desktop.sh && ENGINE=sqldelight RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
-export ENGINE=sqldelight PREFIX=large-
-RUNS=20 ./scripts/run_ios.sh && RUNS=20 POLLS=600 ./scripts/run_android.sh
-RUNS=20 TARGET=macos ./scripts/run_desktop.sh && RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
+export ENGINE=sqldelight
+for P in large- light-; do export PREFIX=$P
+  RUNS=20 ./scripts/run_ios.sh && RUNS=20 POLLS=600 ./scripts/run_android.sh
+  RUNS=20 TARGET=macos ./scripts/run_desktop.sh && RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
+done
 
 python3 scripts/analyze.py results/*.jsonl > RESULTS.md
 python3 scripts/report.py

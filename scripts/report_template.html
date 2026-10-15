@@ -87,8 +87,27 @@
 
 
 
+  <section id="large">
+  <h2 id="calTitle">Une vraie app calendrier</h2>
+  <p class="lead">On reproduit une vraie app calendrier avec <span id="calSize">une base d'environ 120 Mo</span> : contacts, calendriers, événements et participants. <span class="scen" style="color:var(--s1);width:auto">L1</span> met tout dans <b>une seule base</b>. <span class="scen" style="color:var(--s2);width:auto">L2</span> sépare <b>deux bases</b> : contacts d'un côté, calendrier de l'autre. Sans clé étrangère entre les deux, l'agenda doit joindre les participants à leurs contacts <b>en mémoire</b>.</p>
+  <div id="largeEmpty" class="card muted">Données à venir : lancer la suite calendrier (<code>PREFIX=light-</code> ou <code>PREFIX=large-</code>).</div>
+  <div id="largeBody" hidden>
+    <p class="muted" id="largeDataset"></p>
+    <div class="grid cards" id="largeKpis"></div>
+    <div class="toolbar">
+      <div class="seg" id="largeSeg"></div>
+      <div class="legend" id="largeLegend"></div>
+      <span id="largeChecksum"></span>
+    </div>
+    <div class="grid charts" id="largeCharts"></div>
+    <h3 style="margin-top:28px">Tableau détaillé</h3>
+    <p class="muted">Médiane (Q1–Q3) ; la ligne Δ donne l'écart de la médiane par rapport à L1.</p>
+    <div class="card table-wrap"><table id="largeTable"></table></div>
+  </div>
+  </section>
+
   <section class="suite" data-suite="light">
-  <h2>Light : petit jeu de données</h2>
+  <h2>Coût fixe : 10 tables de 2 000 lignes</h2>
   <p class="lead">10 tables de 2 000 lignes (~5 Mo au total), réparties sur 1, 2, 5 ou 10 bases. Mesure surtout le <b>coût fixe</b> d'une base de plus : ouverture, connexions, mémoire, transactions.</p>
   <div class="grid cards" id="kpis"></div>
 
@@ -114,25 +133,6 @@
   <div class="card table-wrap"><table id="table"></table></div>
   </section>
 
-  <section id="large" class="suite" data-suite="large">
-  <h2>Gros volume : une vraie app calendrier</h2>
-  <p class="lead">On reproduit une vraie app calendrier avec une base d'environ 120 Mo : contacts, calendriers, événements et participants. <span class="scen" style="color:var(--s1);width:auto">L1</span> met tout dans <b>une seule base</b>. <span class="scen" style="color:var(--s2);width:auto">L2</span> sépare <b>deux bases</b> : contacts d'un côté, calendrier de l'autre. Sans clé étrangère entre les deux, l'agenda doit joindre les participants à leurs contacts <b>en mémoire</b>.</p>
-  <div id="largeEmpty" class="card muted">Données à venir : lancer la suite gros volume pour remplir <code>results/&lt;plateforme&gt;[-sqldelight]-large.jsonl</code>.</div>
-  <div id="largeBody" hidden>
-    <p class="muted" id="largeDataset"></p>
-    <div class="grid cards" id="largeKpis"></div>
-    <div class="toolbar">
-      <div class="seg" id="largeSeg"></div>
-      <div class="legend" id="largeLegend"></div>
-      <span id="largeChecksum"></span>
-    </div>
-    <div class="grid charts" id="largeCharts"></div>
-    <h3 style="margin-top:28px">Tableau détaillé</h3>
-    <p class="muted">Médiane (Q1–Q3) ; la ligne Δ donne l'écart de la médiane par rapport à L1.</p>
-    <div class="card table-wrap"><table id="largeTable"></table></div>
-  </div>
-  </section>
-
   <section id="versus" hidden>
   <h2>Room vs SQLDelight</h2>
   <p class="lead">Même schéma, mêmes données, mêmes requêtes SQL, mêmes réglages (WAL, <code>synchronous=NORMAL</code>). Deux questions : quelle bibliothèque est la plus rapide en absolu, et <b>le coût de plusieurs bases dépend-il de la bibliothèque</b> ?</p>
@@ -153,11 +153,11 @@
         <li><span class="scen" style="color:var(--s10)">S10</span>10 bases × 1 table</li>
         <li><span class="scen" style="color:var(--s5c)">S5c</span>S5, 1 connexion par base</li>
       </ul></div>
-    <div class="card"><h3>Gros volume</h3>
+    <div class="card"><h3>Suite calendrier</h3>
       <ul class="clean">
         <li><span class="scen" style="color:var(--s1)">L1</span>1 base : contacts + calendriers + événements + participants</li>
         <li><span class="scen" style="color:var(--s2)">L2</span>2 bases : contacts / calendrier</li>
-        <li>Base pré-remplie d'environ 120 Mo : 20 000 contacts, 205 000 événements sur 5 ans, ~513 000 participants (80 % sont des contacts), index <code>(calendarId, startMs)</code> et <code>email</code>. Données générées avec des graines fixes</li><li>Mesures : vues semaine/mois, agenda avec noms des contacts, recherche, synchros (rejouées à l'identique pour que la base ne grossisse pas)</li>
+        <li><b>Gros volume</b> (~120 Mo) : 20 000 contacts, 205 000 événements sur 5 ans, ~513 000 participants. <b>Light</b> (~12 Mo, 10× moins) : 2 000 contacts, 20 500 événements, ~51 000 participants. 80 % des participants sont des contacts ; index <code>(calendarId, startMs)</code> et <code>email</code>. Données générées avec des graines fixes</li><li>Mesures : vues semaine/mois, agenda avec noms des contacts, recherche, synchros (rejouées à l'identique pour que la base ne grossisse pas)</li>
         <li>Même checksum attendu pour L1 et L2 : les deux renvoient les mêmes données</li>
       </ul></div>
     <div class="card"><h3>Stack</h3>
@@ -195,11 +195,14 @@
 <script>
 const ALL = /*__DATA__*/null;
 const ALL_LARGE = /*__LARGE__*/null || {};
+const ALL_LIGHT = /*__LIGHT__*/null || {};
+let suite = location.hash === "#large" ? "large" : "light";
+const CAL = () => suite === "large" ? ALL_LARGE : ALL_LIGHT;
 const ENGINES = ["room", "sqldelight"].filter(e => ALL[e] && Object.keys(ALL[e]).length);
 const ENGINE_LABEL = { room: "Room 3", sqldelight: "SQLDelight 2" };
 let engine = "room", DATA, LARGE, PLATFORMS, SCEN, LPLATFORMS;
 function setEngine(e) {
-  engine = e; DATA = ALL[e]; LARGE = ALL_LARGE[e] || {};
+  engine = e; DATA = ALL[e]; LARGE = CAL()[e] || {};
   PLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => DATA[p]);
   SCEN = ["S1", "S2", "S5", "S10", "S5c"].filter(s => PLATFORMS.some(p => DATA[p].some(r => r.scenario === s)));
   LPLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => LARGE[p] && LARGE[p].runs.length);
@@ -224,13 +227,13 @@ const METRICS = {
   android: [["pssOpenKb", "Mémoire après ouverture", "Mo", "PSS totale"], ["pssEndKb", "Mémoire en fin de run", "Mo", "PSS totale, pire cas"],
             ["nativeHeapEndKb", "Heap natif en fin de run", "Mo", "là où vit SQLite"]],
   large: [
-    ["openMs", "Ouverture", "ms", "ouverture des bases existantes (~120 Mo) + 1re requête"],
+    ["openMs", "Ouverture", "ms", "ouverture des bases existantes + 1re requête"],
     ["weekQueryMs", "Vues « semaine »", "ms", "52 requêtes « semaine » (3 calendriers) événements + participants, sur index"],
     ["monthQueryMs", "Vues « mois »", "ms", "12 requêtes « mois » sur les 10 calendriers"],
     ["agendaJoinMs", "Agenda + noms des contacts", "ms", "12 mois d’agenda (tous calendriers) avec le nom du contact de chaque participant. L1 = un JOIN SQL ; L2 = requête calendrier + lookup contacts <code>WHERE email IN (…)</code> par paquets + jointure en mémoire. LE TEST CLÉ."],
     ["searchContactsMs", "Recherche de contacts", "ms", "100 recherches de contacts par préfixe"],
-    ["syncContactsMs", "Synchro contacts", "ms", "synchro de 2 000 contacts (upsert, 1 transaction)"],
-    ["syncCalendarMs", "Synchro calendrier", "ms", "synchro de 5 000 événements + participants (1 transaction)"],
+    ["syncContactsMs", "Synchro contacts", "ms", "upsert de 10 % des contacts (2 000 en gros volume, 200 en light), 1 transaction"],
+    ["syncCalendarMs", "Synchro calendrier", "ms", "remplacement du calendrier « synchro » : 5 000 événements (500 en light) + participants, 1 transaction"],
     ["parallelSyncMs", "Synchros en parallèle", "ms", "les deux synchros lancées en même temps (L1 : un seul writer partagé ; L2 : un writer par base)"],
   ],
 };
@@ -365,19 +368,18 @@ function renderLarge() {
 }
 // Room vs SQLDelight: absolute medians (S1 / L1) and the cost of splitting (S2 − S1, L2 − L1) for each library.
 const VERSUS = [
-  ["small", "openMs", "Ouverture"], ["small", "writeAllMs", "Écriture sur toutes les tables"], ["small", "writeOneMs", "Écriture sur 1 table"],
-  ["small", "readMs", "Lectures concurrentes"], ["small", "mem", "Mémoire en fin de run"],
-  ["large", "openMs", "Ouverture (120 Mo)"], ["large", "weekQueryMs", "Vues « semaine »"], ["large", "agendaJoinMs", "Agenda + noms des contacts"],
+  ["small", "openMs", "Ouverture (10 tables)"], ["small", "writeAllMs", "Écriture sur toutes les tables"], ["small", "writeOneMs", "Écriture sur 1 table"],
+  ["small", "readMs", "Lectures concurrentes"], ["small", "mem", "Mémoire en fin de run (10 tables)"],
+  ["large", "openMs", "Ouverture (calendrier)"], ["large", "weekQueryMs", "Vues « semaine »"], ["large", "agendaJoinMs", "Agenda + noms des contacts"],
   ["large", "searchContactsMs", "Recherche de contacts"], ["large", "syncCalendarMs", "Synchro calendrier"], ["large", "parallelSyncMs", "Synchros en parallèle"],
-  ["large", "mem", "Mémoire en fin de run (gros volume)"],
+  ["large", "mem", "Mémoire en fin de run (calendrier)"],
 ];
 const VPLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => ALL.room[p] && ALL.sqldelight && ALL.sqldelight[p]);
-let suite = location.hash === "#large" ? "large" : "light";
 let currentVersus = VPLATFORMS.includes("android") ? "android" : VPLATFORMS[0];
 function versusRow(p, [suite, key, title]) {
   const k = key === "mem" ? endMemKey(p) : key, unit = k.endsWith("Kb") ? "Mo" : "ms";
   const [a, b] = suite === "small" ? ["S1", "S2"] : ["L1", "L2"];
-  const rows = e => suite === "small" ? ALL[e]?.[p] : ALL_LARGE[e]?.[p]?.runs;
+  const rows = e => suite === "small" ? ALL[e]?.[p] : CAL()[e]?.[p]?.runs;
   const r = rows("room"), s = rows("sqldelight");
   if (!r || !s) return null;
   const sr = stats(r, k, [a, b]), ss = stats(s, k, [a, b]);
@@ -389,14 +391,14 @@ function renderVersus() {
   document.getElementById("versus").hidden = false;
   document.getElementById("versusSeg").innerHTML = segHtml(VPLATFORMS, currentVersus, p => ALL.sqldelight[p][0].platform);
   document.querySelectorAll("#versusSeg button").forEach(b => b.onclick = () => { currentVersus = b.dataset.p; renderVersus(); });
-  const rows = VERSUS.filter(v => v[0] === (suite === "light" ? "small" : "large")).map(v => versusRow(currentVersus, v)).filter(Boolean);
+  const rows = VERSUS.filter(v => suite === "light" || v[0] === "large").map(v => versusRow(currentVersus, v)).filter(Boolean);
   const ratio = x => `<span class="ratio ${x < 0.95 ? "fast" : x > 1.05 ? "slow" : ""}">× ${fmt(x, 2)}</span>`;
   const d = (x, base, u) => x == null ? "–" : `<span class="delta ${x <= 0 ? "neg" : x / base > 1 ? "big" : "pos"}">${sign(x)} ${u}</span> <span class="iqr">${relTxt(x / base)}</span>`;
   let h = `<tr><th>Métrique</th><th>Room</th><th>SQLDelight</th><th>SQLDelight / Room</th><th>Δ Room (2 bases)</th><th>Δ SQLDelight (2 bases)</th></tr>`;
   for (const v of rows) h += `<tr><td>${v.title} <span class="muted">(${v.unit}, ${v.a})</span></td><td>${fmt(v.room)}</td><td>${fmt(v.sq)}</td><td>${ratio(v.sq / v.room)}</td><td>${d(v.dRoom, v.room, v.unit)}</td><td>${d(v.dSq, v.sq, v.unit)}</td></tr>`;
   document.getElementById("versusTable").innerHTML = h;
-  // Cards: light = open, write all, reads, memory; large = open, agenda join, parallel syncs, memory.
-  document.getElementById("versusCards").innerHTML = (suite === "light" ? [0, 1, 3, 4] : [5, 7, 10, 11]).map(i => versusRow(currentVersus, VERSUS[i])).filter(Boolean)
+  // Cards (calendar suite of the current tab): open, agenda join, parallel syncs, memory.
+  document.getElementById("versusCards").innerHTML = [5, 7, 10, 11].map(i => versusRow(currentVersus, VERSUS[i])).filter(Boolean)
     .map(v => {
       const max = Math.max(v.room, v.sq) * 1.15, bar = (x, c, l) => `<div style="display:flex;align-items:center;gap:10px;margin-top:8px"><span style="width:84px;font-size:12.5px;font-weight:600;color:${c}">${l}</span><div style="flex:1;background:var(--panel2);border-radius:6px;height:22px"><div style="width:${x / max * 100}%;height:100%;background:${c};border-radius:6px"></div></div><span style="width:70px;text-align:right;font-weight:600">${fmt(x)}</span></div>`;
       return `<div class="card"><h3>${v.title} <span class="muted" style="font-weight:400">(${v.unit}, ${v.a})</span></h3>${bar(v.room, "var(--accent)", "Room")}${bar(v.sq, "var(--s5c)", "SQLDelight")}
@@ -404,13 +406,15 @@ function renderVersus() {
     }).join("");
 }
 
-const SUITE_LABEL = { light: "Light · 2 000 lignes/table", large: "Gros volume · ~120 Mo" };
+const SUITE_LABEL = { light: "Light · ~12 Mo", large: "Gros volume · ~120 Mo" };
 function renderSuite() {
   document.getElementById("suiteSeg").innerHTML = Object.keys(SUITE_LABEL).map(x => `<button class="eng ${x === suite ? "on" : ""}" data-s="${x}">${SUITE_LABEL[x]}</button>`).join("");
   document.querySelectorAll("#suiteSeg button").forEach(b => b.onclick = () => { suite = b.dataset.s; history.replaceState(null, "", suite === "large" ? "#large" : location.pathname); renderSuite(); });
   document.querySelectorAll(".suite").forEach(el => el.hidden = el.dataset.suite !== suite);
-  document.getElementById("versusNote").innerHTML = `Médianes. « SQLDelight / Room » &lt; 1 = SQLDelight plus rapide. Les colonnes Δ donnent le coût du découpage (${suite === "light" ? "S2 − S1" : "L2 − L1"}) pour chaque bibliothèque.`;
-  renderVersus();
+  document.getElementById("calTitle").textContent = suite === "large" ? "Gros volume : une vraie app calendrier (~120 Mo)" : "Light : la même app calendrier, compte modeste (~12 Mo)";
+  document.getElementById("calSize").textContent = suite === "large" ? "une base d'environ 120 Mo" : "une base d'environ 12 Mo (10× moins de données que le gros volume)";
+  document.getElementById("versusNote").innerHTML = `Médianes. « SQLDelight / Room » &lt; 1 = SQLDelight plus rapide. Les colonnes Δ donnent le coût du découpage (L2 − L1${suite === "light" ? ", S2 − S1" : ""}) pour chaque bibliothèque.`;
+  setEngine(engine); renderEngine(); renderVersus();
 }
 function renderEngine() {
   document.getElementById("engineSeg").innerHTML = ENGINES.map(e => `<button class="eng ${e === engine ? "on" : ""}" data-e="${e}">${ENGINE_LABEL[e]}</button>`).join("");
@@ -420,7 +424,7 @@ function renderEngine() {
   if (LPLATFORMS.length) { renderLargeKpis(); renderLarge(); }
   renderKpis(); render();
 }
-renderInsight(); renderEngine(); renderSuite();
+renderInsight(); renderSuite();
 </script>
 </body>
 </html>

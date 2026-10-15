@@ -2,7 +2,7 @@ package bench
 
 import platform.Foundation.NSTemporaryDirectory
 
-/** Usage: <seed|run|large-seed|large-run> <scenario>. Launched as a fresh native macOS process for every measurement. */
+/** Usage: <seed|run|large-seed|large-run|light-seed|light-run> <scenario>. Launched as a fresh native macOS process for every measurement. */
 fun main(args: Array<String>) {
     val (mode, scenario) = args
     val dir = NSTemporaryDirectory() + "roombench"
