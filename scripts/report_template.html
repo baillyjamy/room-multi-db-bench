@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Room KMP — Coût de plusieurs bases de données</title>
+<title>Room &amp; SQLDelight KMP — Coût de plusieurs bases de données</title>
 <style>
   :root {
     --bg: #0b0e14; --panel: #131824; --panel2: #1a2030; --text: #e6e9f0; --muted: #8b93a7; --line: #262d3d;
@@ -57,25 +57,42 @@
   .badge { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); }
   .badge.ok { color: var(--good); border-color: rgba(61,220,151,.35); } .badge.ko { color: var(--bad); border-color: rgba(255,107,122,.4); } .badge.wait { color: var(--muted); }
   .kpi .rel { font-size: 13px; font-weight: 600; margin-left: 6px; }
+  .engine-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 6; padding: 10px 0; background: var(--bg); }
+  .engine-bar .seg button { font-size: 14px; padding: 7px 18px; }
+  .seg button.on.eng { background: var(--accent); color: #0b0e14; }
+  .ratio.fast { color: var(--good); } .ratio.slow { color: var(--warn); }
   footer { margin-top: 64px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">Benchmark · Room 3 KMP · Android &amp; iOS</div>
-    <h1>Plusieurs bases Room, <em>est-ce que ça coûte cher&nbsp;?</em></h1>
-    <p class="lead">On répartit le même schéma de 10 tables, avec les mêmes données et la même charge de travail, sur 1, 2, 5 ou 10 bases SQLite. On mesure ensuite le temps d'ouverture, les écritures, les lectures et la mémoire. Chaque mesure tourne dans un process neuf, 20 fois par scénario.</p>
+    <div class="eyebrow">Benchmark · Room 3 &amp; SQLDelight 2 · KMP · Android, iOS, macOS, JVM</div>
+    <h1>Plusieurs bases SQLite, <em>est-ce que ça coûte cher&nbsp;?</em></h1>
+    <p class="lead">On répartit le même schéma de 10 tables, avec les mêmes données et la même charge de travail, sur 1, 2, 5 ou 10 bases SQLite. On mesure ensuite le temps d'ouverture, les écritures, les lectures et la mémoire. Chaque mesure tourne dans un process neuf, 20 fois par scénario. Le tout avec <b>Room</b> puis avec <b>SQLDelight</b>.</p>
   </header>
+
+  <div class="engine-bar"><span class="muted">Bibliothèque affichée</span><div class="seg" id="engineSeg"></div></div>
 
   <div class="verdict">
     <b>Verdict :</b> avec <b>2 bases</b> (contacts + calendrier), le surcoût est de <b>quelques millisecondes à l'ouverture</b> et d'environ <b>1 Mo de mémoire</b>.
     Le surcoût mémoire en pire cas vient du <b>nombre de connexions</b> (1 writer + 4 readers par base), pas du nombre de bases, et il se règle avec la taille du pool.
+    <br><b>Et ce n'est pas propre à Room :</b> SQLDelight montre exactement le même profil (perte du <code>JOIN</code>, synchros parallèles plus rapides, quelques ms à l'ouverture). Le coût vient de SQLite, pas de la bibliothèque.
   </div>
 
   <div class="grid cards" id="kpis"></div>
 
-  <h2>L'insight clé : connexions ≠ bases</h2>
+  <section id="versus" hidden>
+  <h2>Room vs SQLDelight</h2>
+  <p class="lead">Même schéma, mêmes données, mêmes requêtes SQL, mêmes réglages (WAL, <code>synchronous=NORMAL</code>). Deux questions : quelle bibliothèque est la plus rapide en absolu, et <b>le coût de plusieurs bases dépend-il de la bibliothèque</b> ?</p>
+  <div class="toolbar"><div class="seg" id="versusSeg"></div></div>
+  <div class="grid charts" id="versusCards"></div>
+  <h3 style="margin-top:28px">Tableau détaillé</h3>
+  <p class="muted">Médianes. « SQLDelight / Room » &lt; 1 = SQLDelight plus rapide. Les colonnes Δ donnent le coût du découpage (S2 − S1, L2 − L1) pour chaque bibliothèque.</p>
+  <div class="card table-wrap"><table id="versusTable"></table></div>
+  </section>
+
+  <h2>L'insight clé : connexions ≠ bases <span class="tag">Room</span></h2>
   <div class="card insight">
     <div>
       <p>Room ouvre jusqu'à <b>1 writer + 4 readers par base</b>, et SQLite garde un cache de pages (~2 Mo max) <b>par connexion</b>. Le scénario de contrôle <span class="tag" style="color:var(--s5c)">S5c</span> utilise <b>5 bases</b> avec une seule connexion chacune, soit <b>5 connexions au total, comme S1</b>.</p>
@@ -88,7 +105,7 @@
   <section id="large">
   <h2>Gros volume : une vraie app calendrier</h2>
   <p class="lead">Jusqu'ici, les tables étaient petites. Ici on reproduit une vraie app calendrier avec une base d'environ 120 Mo : contacts, calendriers, événements et participants. <span class="scen" style="color:var(--s1);width:auto">L1</span> met tout dans <b>une seule base</b>. <span class="scen" style="color:var(--s2);width:auto">L2</span> sépare <b>deux bases</b> : contacts d'un côté, calendrier de l'autre. Sans clé étrangère entre les deux, l'agenda doit joindre les participants à leurs contacts <b>en mémoire</b>.</p>
-  <div id="largeEmpty" class="card muted">Données à venir : lancer la suite gros volume pour remplir <code>results/{android,ios,macos,jvm}-large.jsonl</code>.</div>
+  <div id="largeEmpty" class="card muted">Données à venir : lancer la suite gros volume pour remplir <code>results/&lt;plateforme&gt;[-sqldelight]-large.jsonl</code>.</div>
   <div id="largeBody" hidden>
     <p class="muted" id="largeDataset"></p>
     <div class="grid cards" id="largeKpis"></div>
@@ -133,11 +150,11 @@
         <li>Même checksum attendu pour L1 et L2 : les deux renvoient les mêmes données</li>
       </ul></div>
     <div class="card"><h3>Stack</h3>
-      <ul class="clean"><li>Kotlin 2.4.10, Room <b>3.0.2</b> (<code>androidx.room3</code>)</li><li><code>BundledSQLiteDriver</code> (sqlite-bundled 2.6.2)</li><li>WAL, pool par défaut : 1 writer + 4 readers par base</li><li>2 000 lignes par table, payload d'environ 210 octets</li></ul></div>
+      <ul class="clean"><li>Kotlin 2.4.10, Room <b>3.0.2</b> (<code>androidx.room3</code>), <code>BundledSQLiteDriver</code> (sqlite-bundled 2.6.2), WAL, pool par défaut : 1 writer + 4 readers par base</li><li>SQLDelight <b>2.4.1</b>, drivers officiels : <code>AndroidSqliteDriver</code> (SQLite système), <code>NativeSqliteDriver</code> (1 writer + 1 reader), <code>JdbcSqliteDriver</code> ; WAL et <code>synchronous=NORMAL</code> comme Room</li><li>Mêmes DDL, index et requêtes SQL ; <code>sqlite_version()</code> enregistrée à chaque run</li><li>2 000 lignes par table, payload d'environ 210 octets</li></ul></div>
     <div class="card"><h3>Protocole</h3>
       <ul class="clean"><li>1 <b>process neuf</b> par mesure</li><li>Android : APK release non debuggable, lancé avec <code>am start -S</code></li><li>iOS : vraie app SwiftUI (<code>iosApp/</code>) liant le framework Kotlin, relancée à chaque mesure avec <code>simctl launch --terminate-running-process</code></li><li>macOS : exécutable Kotlin/Native <code>macosArm64</code> (release)</li><li>JVM desktop : distribution <code>installJvmDist</code>, une JVM neuve par mesure</li><li>20 runs par scénario, scénarios alternés, warm-up écarté</li><li>Médiane + IQR</li></ul></div>
     <div class="card"><h3>Environnement</h3>
-      <ul class="clean"><li>Mac M3 Max, 36 Go, macOS 26.7</li><li>Émulateur Android 16 (API 36), arm64, 4 cœurs</li><li>Simulateur iPhone 17, iOS 26.5</li><li>macOS et JVM : directement sur le Mac (OpenJDK 25)</li></ul></div>
+      <ul class="clean"><li>Mac M3 Max, 36 Go, macOS 26.7</li><li>Émulateur Android 16 (API 36), arm64, 4 cœurs</li><li>Simulateur iPhone 17, iOS 26.5</li><li>macOS et JVM : directement sur le Mac (OpenJDK 27)</li></ul></div>
   </div>
 
   <h2>Limites</h2>
@@ -146,7 +163,8 @@
     <li>La mémoire « fin » est un <b>pire cas</b> : toutes les connexions sont ouvertes et tous les caches sont remplis par des scans complets.</li>
     <li>Gros volume : les données sont <b>synthétiques</b>. La volumétrie est réaliste, mais la distribution (participants par événement, calendriers) peut différer de celle d'une vraie app.</li>
     <li>JVM : une JVM à froid par mesure (JIT, chargement des classes), d'où beaucoup de bruit sur l'ouverture. La RSS inclut la mémoire native que l'allocateur ne rend pas : à lire comme un ordre de grandeur.</li>
-    <li>L'accès multi-process (App Group iOS) n'est pas mesuré.</li>
+    <li>SQLDelight sur Android et JVM utilise une autre version de SQLite que Room (système / sqlite-jdbc). La comparaison absolue Room vs SQLDelight y mélange bibliothèque et moteur ; le coût 1 base vs 2 bases reste valable pour chacune. En natif, les deux utilisent la même SQLite (3.50.1).</li>
+    <li>L'accès multi-process (App Group iOS, <code>ContentProvider</code> Android) n'est pas mesuré.</li>
   </ul></div>
 
   <h2>Sources</h2>
@@ -156,19 +174,28 @@
     <li><a href="https://www.sqlite.org/wal.html">SQLite – Write-Ahead Logging</a> : un seul writer à la fois <b>par base</b>. C'est ce qui explique pourquoi les synchros parallèles sont plus rapides en L2.</li>
     <li><a href="https://developer.android.com/topic/performance/sqlite-performance-best-practices">Android – SQLite performance best practices</a> : « <i>Push work to SQLite engine</i> », ce qui explique le surcoût de la jointure agenda en mémoire en L2. En WAL, « <i>every commit issues an fsync</i> », ce qui explique le coût d'une action qui écrit dans plusieurs bases.</li>
     <li><a href="https://www.sqlite.org/lang_attach.html">SQLite – ATTACH DATABASE</a> : ajoute un autre fichier à la même connexion, ce qui permet un <code>JOIN</code> entre deux bases. C'est l'alternative si le <code>JOIN</code> contacts ↔ événements est indispensable. Attention : la page Android précédente déconseille WAL avec <code>ATTACH</code>, et Room ne le gère pas nativement.</li>
+    <li><a href="https://sqldelight.github.io/sqldelight/latest/multiplatform_sqlite/">SQLDelight – Multiplatform</a> : drivers officiels par plateforme utilisés pour la comparaison.</li>
     <li><a href="https://developer.apple.com/documentation/foundation/filemanager/containerurl(forsecurityapplicationgroupidentifier:)">Apple – containerURL(forSecurityApplicationGroupIdentifier:)</a> : un App Group est un « <i>group's shared directory</i> », un dossier partagé entre les apps d'un même développeur, <b>pas un process dédié</b>.</li>
   </ul></div>
 
-  <footer>Données brutes : <code>results/*.jsonl</code> · Régénérer : <code>python3 scripts/report.py</code> · Code : <code>shared/src/commonMain/kotlin/bench/Bench.kt</code>, <code>shared/src/commonMain/kotlin/bench/large/</code></footer>
+  <footer>Données brutes : <code>results/*.jsonl</code> · Régénérer : <code>python3 scripts/report.py</code> · Code : <code>shared/src/commonMain/kotlin/bench/</code> (Room et <code>sqldelight/</code>), <code>shared/sqldelight/</code> (requêtes <code>.sq</code>)</footer>
 </div>
 
 <script>
-const DATA = /*__DATA__*/null;
-const SCEN = ["S1", "S2", "S5", "S10", "S5c"];
-const LARGE = /*__LARGE__*/null || {};
+const ALL = /*__DATA__*/null;
+const ALL_LARGE = /*__LARGE__*/null || {};
+const ENGINES = ["room", "sqldelight"].filter(e => ALL[e] && Object.keys(ALL[e]).length);
+const ENGINE_LABEL = { room: "Room 3", sqldelight: "SQLDelight 2" };
+let engine = "room", DATA, LARGE, PLATFORMS, SCEN, LPLATFORMS;
+function setEngine(e) {
+  engine = e; DATA = ALL[e]; LARGE = ALL_LARGE[e] || {};
+  PLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => DATA[p]);
+  SCEN = ["S1", "S2", "S5", "S10", "S5c"].filter(s => PLATFORMS.some(p => DATA[p].some(r => r.scenario === s)));
+  LPLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => LARGE[p] && LARGE[p].runs.length);
+}
+setEngine("room");
 const LSCEN = ["L1", "L2"];
 const COLORS = { S1: "var(--s1)", S2: "var(--s2)", S5: "var(--s5)", S10: "var(--s10)", S5c: "var(--s5c)", L1: "var(--s1)", L2: "var(--s2)" };
-const PLATFORMS = Object.keys(DATA);
 const LABEL = { android: "Android", ios: "iOS", macos: "macOS (natif)", jvm: "JVM desktop" };
 const MEM = { android: "pss", ios: "footprint", macos: "footprint", jvm: "rss" };
 const METRICS = {
@@ -250,8 +277,8 @@ function renderKpis() {
 }
 
 function renderInsight() {
-  const p = PLATFORMS.includes("android") ? "android" : PLATFORMS[0];
-  const st = stats(DATA[p], endMemKey(p));
+  const room = ALL.room, p = room.android ? "android" : Object.keys(room)[0];
+  const st = stats(room[p], endMemKey(p), ["S1", "S5", "S5c"]);
   document.getElementById("insightChart").innerHTML =
     `<div class="muted" style="font-size:13px">${LABEL[p]} · mémoire en fin de run (Mo, delta) — S1 vs S5 vs S5c</div>` +
     barChart({ S1: st.S1, S5: st.S5, S5c: st.S5c }, "Mo", { height: 230 }) +
@@ -281,8 +308,9 @@ function segHtml(platforms, cur, label) {
   return platforms.map(p => `<button class="${p === cur ? "on" : ""}" data-p="${p}">${LABEL[p]} · ${label(p)}</button>`).join("");
 }
 
-let current = PLATFORMS.includes("android") ? "android" : PLATFORMS[0];
+let current = "android";
 function render() {
+  if (!PLATFORMS.includes(current)) current = PLATFORMS[0];
   document.getElementById("platformSeg").innerHTML = segHtml(PLATFORMS, current, p => DATA[p][0].platform);
   document.querySelectorAll("#platformSeg button").forEach(b => b.onclick = () => { current = b.dataset.p; render(); });
   document.getElementById("legend").innerHTML = legendHtml(SCEN);
@@ -291,8 +319,7 @@ function render() {
   document.getElementById("table").innerHTML = tableHtml(DATA[current], ms, SCEN);
 }
 
-const LPLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => LARGE[p] && LARGE[p].runs.length);
-let currentLarge = LPLATFORMS[0];
+let currentLarge = "android";
 function checksumBadge(p) {
   const runs = LARGE[p].runs.filter(r => LSCEN.includes(r.scenario) && r.checksum != null);
   const scen = new Set(runs.map(r => r.scenario)), sums = new Set(runs.map(r => String(r.checksum)));
@@ -311,6 +338,7 @@ function renderLargeKpis() {
     card("Synchros en parallèle", "parallelSyncMs") + card("Mémoire en fin de run", endMemKey);
 }
 function renderLarge() {
+  if (!LPLATFORMS.includes(currentLarge)) currentLarge = LPLATFORMS[0];
   const L = LARGE[currentLarge];
   const seed = L.seeds.find(r => r.scenario === "L1") || L.seeds[0];
   document.getElementById("largeDataset").innerHTML = seed
@@ -324,12 +352,55 @@ function renderLarge() {
   document.getElementById("largeCharts").innerHTML = chartsHtml(L.runs, ms, LSCEN);
   document.getElementById("largeTable").innerHTML = tableHtml(L.runs, ms, LSCEN);
 }
-if (LPLATFORMS.length) {
-  document.getElementById("largeEmpty").hidden = true;
-  document.getElementById("largeBody").hidden = false;
-  renderLargeKpis(); renderLarge();
+// Room vs SQLDelight: absolute medians (S1 / L1) and the cost of splitting (S2 − S1, L2 − L1) for each library.
+const VERSUS = [
+  ["small", "openMs", "Ouverture"], ["small", "writeAllMs", "Écriture sur toutes les tables"], ["small", "writeOneMs", "Écriture sur 1 table"],
+  ["small", "readMs", "Lectures concurrentes"], ["small", "mem", "Mémoire en fin de run"],
+  ["large", "openMs", "Ouverture (120 Mo)"], ["large", "weekQueryMs", "Vues « semaine »"], ["large", "agendaJoinMs", "Agenda + noms des contacts"],
+  ["large", "searchContactsMs", "Recherche de contacts"], ["large", "syncCalendarMs", "Synchro calendrier"], ["large", "parallelSyncMs", "Synchros en parallèle"],
+  ["large", "mem", "Mémoire en fin de run (gros volume)"],
+];
+const VPLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => ALL.room[p] && ALL.sqldelight && ALL.sqldelight[p]);
+let currentVersus = VPLATFORMS.includes("android") ? "android" : VPLATFORMS[0];
+function versusRow(p, [suite, key, title]) {
+  const k = key === "mem" ? endMemKey(p) : key, unit = k.endsWith("Kb") ? "Mo" : "ms";
+  const [a, b] = suite === "small" ? ["S1", "S2"] : ["L1", "L2"];
+  const rows = e => suite === "small" ? ALL[e]?.[p] : ALL_LARGE[e]?.[p]?.runs;
+  const r = rows("room"), s = rows("sqldelight");
+  if (!r || !s) return null;
+  const sr = stats(r, k, [a, b]), ss = stats(s, k, [a, b]);
+  if (!sr[a] || !ss[a]) return null;
+  return { title, unit, a, room: sr[a].med, sq: ss[a].med, dRoom: sr[b] && sr[b].med - sr[a].med, dSq: ss[b] && ss[b].med - ss[a].med };
 }
-renderKpis(); renderInsight(); render();
+function renderVersus() {
+  if (!VPLATFORMS.length) return;
+  document.getElementById("versus").hidden = false;
+  document.getElementById("versusSeg").innerHTML = segHtml(VPLATFORMS, currentVersus, p => ALL.sqldelight[p][0].platform);
+  document.querySelectorAll("#versusSeg button").forEach(b => b.onclick = () => { currentVersus = b.dataset.p; renderVersus(); });
+  const rows = VERSUS.map(v => versusRow(currentVersus, v)).filter(Boolean);
+  const ratio = x => `<span class="ratio ${x < 0.95 ? "fast" : x > 1.05 ? "slow" : ""}">× ${fmt(x, 2)}</span>`;
+  const d = (x, base, u) => x == null ? "–" : `<span class="delta ${x <= 0 ? "neg" : x / base > 1 ? "big" : "pos"}">${sign(x)} ${u}</span> <span class="iqr">${relTxt(x / base)}</span>`;
+  let h = `<tr><th>Métrique</th><th>Room</th><th>SQLDelight</th><th>SQLDelight / Room</th><th>Δ Room (2 bases)</th><th>Δ SQLDelight (2 bases)</th></tr>`;
+  for (const v of rows) h += `<tr><td>${v.title} <span class="muted">(${v.unit}, ${v.a})</span></td><td>${fmt(v.room)}</td><td>${fmt(v.sq)}</td><td>${ratio(v.sq / v.room)}</td><td>${d(v.dRoom, v.room, v.unit)}</td><td>${d(v.dSq, v.sq, v.unit)}</td></tr>`;
+  document.getElementById("versusTable").innerHTML = h;
+  // Cards: small open, agenda join, parallel syncs, large-suite memory.
+  document.getElementById("versusCards").innerHTML = [0, 7, 10, 11].map(i => versusRow(currentVersus, VERSUS[i])).filter(Boolean)
+    .map(v => {
+      const max = Math.max(v.room, v.sq) * 1.15, bar = (x, c, l) => `<div style="display:flex;align-items:center;gap:10px;margin-top:8px"><span style="width:84px;font-size:12.5px;font-weight:600;color:${c}">${l}</span><div style="flex:1;background:var(--panel2);border-radius:6px;height:22px"><div style="width:${x / max * 100}%;height:100%;background:${c};border-radius:6px"></div></div><span style="width:70px;text-align:right;font-weight:600">${fmt(x)}</span></div>`;
+      return `<div class="card"><h3>${v.title} <span class="muted" style="font-weight:400">(${v.unit}, ${v.a})</span></h3>${bar(v.room, "var(--accent)", "Room")}${bar(v.sq, "var(--s5c)", "SQLDelight")}
+        <div class="muted" style="font-size:12.5px;margin-top:10px">Coût de 2 bases : Room ${v.dRoom == null ? "–" : sign(v.dRoom) + " " + v.unit} · SQLDelight ${v.dSq == null ? "–" : sign(v.dSq) + " " + v.unit}</div></div>`;
+    }).join("");
+}
+
+function renderEngine() {
+  document.getElementById("engineSeg").innerHTML = ENGINES.map(e => `<button class="eng ${e === engine ? "on" : ""}" data-e="${e}">${ENGINE_LABEL[e]}</button>`).join("");
+  document.querySelectorAll("#engineSeg button").forEach(b => b.onclick = () => { setEngine(b.dataset.e); renderEngine(); });
+  document.getElementById("largeEmpty").hidden = LPLATFORMS.length > 0;
+  document.getElementById("largeBody").hidden = !LPLATFORMS.length;
+  if (LPLATFORMS.length) { renderLargeKpis(); renderLarge(); }
+  renderKpis(); render();
+}
+renderInsight(); renderVersus(); renderEngine();
 </script>
 </body>
 </html>

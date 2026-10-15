@@ -3,7 +3,9 @@ package bench.large
 import androidx.room3.RoomDatabase
 import androidx.room3.useReaderConnection
 import androidx.room3.withWriteTransaction
-import bench.PLATFORM
+import bench.bareScenario
+import bench.dataDir
+import bench.header
 import bench.configure
 import bench.deleteDir
 import bench.fullGc
@@ -97,31 +99,73 @@ private fun syncContacts(): List<ContactEntity> {
     return List(SYNC_CONTACTS) { contact(it * 10L + 1, generation = 1) }
 }
 
-/** Either one database (L1) or two (L2). */
-class LargeHandles(val mono: LargeMonoDb?, val contactsDb: LargeContactsDb?, val calendarDb: LargeCalendarDb?) {
-    val contacts: ContactDao get() = mono?.contactDao() ?: contactsDb!!.contactDao()
-    val calendar: CalendarDao get() = mono?.calendarDao() ?: calendarDb!!.calendarDao()
-    val contactsRoom: RoomDatabase get() = mono ?: contactsDb!!
-    val calendarRoom: RoomDatabase get() = mono ?: calendarDb!!
-    val all: List<RoomDatabase> get() = listOfNotNull(mono, contactsDb, calendarDb)
-
-    suspend fun agenda(cals: List<Long>, from: Long, to: Long): List<AgendaRow> {
-        mono?.let { return it.joinDao().agenda(cals, from, to) }
-        // Two databases: no SQL JOIN possible -> query calendar DB, then batch lookup in contacts DB, join in memory.
-        val raw = calendar.agendaRaw(cals, from, to)
-        val names = HashMap<String, String>()
-        raw.asSequence().map { it.attendeeEmail }.distinct().chunked(IN_CHUNK).forEach { chunk ->
-            contacts.byEmails(chunk).forEach { names[it.email] = it.name }
-        }
-        return raw.map { AgendaRow(it.eventId, it.title, it.startMs, it.attendeeEmail, names[it.attendeeEmail]) }
-    }
-
-    fun close() = all.forEach { it.close() }
+/** Same data, same queries, whatever the library. L1 = one database file, L2 = contacts file + calendar file. */
+interface LargeStore {
+    val dbCount: Int
+    suspend fun countContacts(): Int
+    suspend fun countEvents(): Int
+    suspend fun countAttendees(): Int
+    /** Each write method below runs in one write transaction on the database that owns the data. */
+    suspend fun upsertContacts(batch: List<ContactEntity>)
+    suspend fun insertCalendars(calendars: List<CalendarEntity>)
+    suspend fun insertEvents(events: List<EventEntity>, attendees: List<AttendeeEntity>)
+    suspend fun replaceCalendar(calendarId: Long, events: List<EventEntity>, attendees: List<AttendeeEntity>)
+    suspend fun eventsInRange(cals: List<Long>, from: Long, to: Long): List<EventEntity>
+    suspend fun attendeesInRange(cals: List<Long>, from: Long, to: Long): List<AttendeeEntity>
+    suspend fun agenda(cals: List<Long>, from: Long, to: Long): List<AgendaRow>
+    suspend fun searchContacts(prefix: String): List<ContactEntity>
+    suspend fun sizeMb(): Double
+    suspend fun sqliteVersion(): String
+    fun close()
 }
 
-fun openLarge(scenario: String, dir: String): LargeHandles = when (scenario) {
-    "L1" -> LargeHandles(largeMonoDbBuilder("$dir/app.db").configure().build(), null, null)
-    "L2" -> LargeHandles(null, largeContactsDbBuilder("$dir/contacts.db").configure().build(), largeCalendarDbBuilder("$dir/calendar.db").configure().build())
+/** Two databases: no SQL JOIN possible -> calendar query, then batched lookup in the contacts DB, join in memory. */
+suspend fun joinInMemory(raw: List<AgendaRawRow>, byEmails: suspend (List<String>) -> List<ContactEntity>): List<AgendaRow> {
+    val names = HashMap<String, String>()
+    raw.asSequence().map { it.attendeeEmail }.distinct().chunked(IN_CHUNK).forEach { chunk ->
+        byEmails(chunk).forEach { names[it.email] = it.name }
+    }
+    return raw.map { AgendaRow(it.eventId, it.title, it.startMs, it.attendeeEmail, names[it.attendeeEmail]) }
+}
+
+class RoomLargeStore(private val mono: LargeMonoDb?, private val contactsDb: LargeContactsDb?, private val calendarDb: LargeCalendarDb?) : LargeStore {
+    private val contacts: ContactDao get() = mono?.contactDao() ?: contactsDb!!.contactDao()
+    private val calendar: CalendarDao get() = mono?.calendarDao() ?: calendarDb!!.calendarDao()
+    private val contactsRoom: RoomDatabase get() = mono ?: contactsDb!!
+    private val calendarRoom: RoomDatabase get() = mono ?: calendarDb!!
+    private val all: List<RoomDatabase> get() = listOfNotNull(mono, contactsDb, calendarDb)
+    override val dbCount get() = all.size
+
+    override suspend fun countContacts() = contacts.count()
+    override suspend fun countEvents() = calendar.countEvents()
+    override suspend fun countAttendees() = calendar.countAttendees()
+    override suspend fun upsertContacts(batch: List<ContactEntity>) = contactsRoom.withWriteTransaction { contacts.upsert(batch) }
+    override suspend fun insertCalendars(calendars: List<CalendarEntity>) = calendarRoom.withWriteTransaction { calendar.insertCalendars(calendars) }
+    override suspend fun insertEvents(events: List<EventEntity>, attendees: List<AttendeeEntity>) = calendarRoom.withWriteTransaction {
+        calendar.insertEvents(events)
+        calendar.insertAttendees(attendees)
+    }
+    override suspend fun replaceCalendar(calendarId: Long, events: List<EventEntity>, attendees: List<AttendeeEntity>) =
+        calendarRoom.withWriteTransaction {
+            calendar.deleteAttendeesOf(calendarId)
+            calendar.deleteEventsOf(calendarId)
+            calendar.insertEvents(events)
+            calendar.insertAttendees(attendees)
+        }
+    override suspend fun eventsInRange(cals: List<Long>, from: Long, to: Long) = calendar.eventsInRange(cals, from, to)
+    override suspend fun attendeesInRange(cals: List<Long>, from: Long, to: Long) = calendar.attendeesInRange(cals, from, to)
+    override suspend fun agenda(cals: List<Long>, from: Long, to: Long): List<AgendaRow> =
+        mono?.joinDao()?.agenda(cals, from, to) ?: joinInMemory(calendar.agendaRaw(cals, from, to)) { contacts.byEmails(it) }
+    override suspend fun searchContacts(prefix: String) = contacts.search(prefix)
+    override suspend fun sizeMb() = all.sumOf { sizeBytes(it) } / 1_048_576.0
+    override suspend fun sqliteVersion() = all.first().useReaderConnection { c -> c.usePrepared("SELECT sqlite_version()") { it.step(); it.getText(0) } }
+    override fun close() = all.forEach { it.close() }
+}
+
+fun openLarge(scenario: String, dir: String): LargeStore = when (scenario) {
+    "L1" -> RoomLargeStore(largeMonoDbBuilder("$dir/app.db").configure().build(), null, null)
+    "L2" -> RoomLargeStore(null, largeContactsDbBuilder("$dir/contacts.db").configure().build(), largeCalendarDbBuilder("$dir/calendar.db").configure().build())
+    "sqldelight:L1", "sqldelight:L2" -> bench.sqldelight.openSqLarge(bareScenario(scenario), dir)
     else -> error("unknown large scenario $scenario")
 }
 
@@ -131,50 +175,30 @@ private suspend fun sizeBytes(db: RoomDatabase): Long = db.useReaderConnection {
     pages * size
 }
 
-private suspend fun LargeHandles.sizeMb() = all.sumOf { sizeBytes(it) } / 1_048_576.0
-
-private suspend fun LargeHandles.doSyncContacts(batch: List<ContactEntity>) =
-    contactsRoom.withWriteTransaction { contacts.upsert(batch) }
-
-private suspend fun LargeHandles.doSyncCalendar(batch: Pair<List<EventEntity>, List<AttendeeEntity>>) =
-    calendarRoom.withWriteTransaction {
-        calendar.deleteAttendeesOf(SYNC_CALENDAR_ID)
-        calendar.deleteEventsOf(SYNC_CALENDAR_ID)
-        calendar.insertEvents(batch.first)
-        calendar.insertAttendees(batch.second)
-    }
-
 suspend fun largeSeed(scenario: String, baseDir: String): String {
-    val dir = "$baseDir/$scenario"
+    val dir = dataDir(baseDir, scenario)
     deleteDir(dir)
     makeDir(dir)
     val h = openLarge(scenario, dir)
     val ms = timedMs {
-        (1L..CONTACTS).chunked(BATCH).forEach { ids ->
-            h.contactsRoom.withWriteTransaction { h.contacts.upsert(ids.map { contact(it) }) }
-        }
-        h.calendarRoom.withWriteTransaction {
-            h.calendar.insertCalendars((1L..SYNC_CALENDAR_ID).map { CalendarEntity(it, "Calendar $it", "#${it.toString().padStart(6, '0')}") })
-        }
+        (1L..CONTACTS).chunked(BATCH).forEach { ids -> h.upsertContacts(ids.map { contact(it) }) }
+        h.insertCalendars((1L..SYNC_CALENDAR_ID).map { CalendarEntity(it, "Calendar $it", "#${it.toString().padStart(6, '0')}") })
         val re = Random(2)
         (1L..EVENTS).chunked(BATCH).forEach { ids ->
             val events = ids.map { event(it, 1 + (it % CALENDARS), re, 1_826 * DAY) }
             val attendees = events.flatMap { attendeesOf(it.id, re) }
-            h.calendarRoom.withWriteTransaction {
-                h.calendar.insertEvents(events)
-                h.calendar.insertAttendees(attendees)
-            }
+            h.insertEvents(events, attendees)
         }
-        h.doSyncCalendar(syncBatch())
+        syncBatch().let { (e, a) -> h.replaceCalendar(SYNC_CALENDAR_ID, e, a) }
     }
-    val result = """{"mode":"large-seed","platform":"$PLATFORM","scenario":"$scenario","seedMs":$ms,""" +
-        """"contacts":${h.contacts.count()},"events":${h.calendar.countEvents()},"attendees":${h.calendar.countAttendees()},"dbSizeMb":${h.sizeMb()}}"""
+    val result = header("large-seed", scenario) + ""","seedMs":$ms,""" +
+        """"contacts":${h.countContacts()},"events":${h.countEvents()},"attendees":${h.countAttendees()},"dbSizeMb":${h.sizeMb()}}"""
     h.close()
     return result
 }
 
 suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope {
-    val dir = "$baseDir/$scenario"
+    val dir = dataDir(baseDir, scenario)
     val contactsBatch = syncContacts()
     val calendarBatch = syncBatch()
     fullGc()
@@ -182,11 +206,11 @@ suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope
     var checksum = 0L
     fun mix(v: Long) { checksum = checksum * 31 + v }
 
-    lateinit var h: LargeHandles
+    lateinit var h: LargeStore
     val openMs = timedMs {
         h = openLarge(scenario, dir)
-        mix(h.contacts.count().toLong())
-        mix(h.calendar.countEvents().toLong())
+        mix(h.countContacts().toLong())
+        mix(h.countEvents().toLong())
     }
     fullGc()
     val mOpen = memory()
@@ -194,14 +218,14 @@ suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope
     val weekQueryMs = timedMs {
         repeat(52) { w ->
             val from = YEAR_2024 + w * 7 * DAY
-            mix(h.calendar.eventsInRange(WEEK_CALS, from, from + 7 * DAY).sumOf { it.id })
-            mix(h.calendar.attendeesInRange(WEEK_CALS, from, from + 7 * DAY).size.toLong())
+            mix(h.eventsInRange(WEEK_CALS, from, from + 7 * DAY).sumOf { it.id })
+            mix(h.attendeesInRange(WEEK_CALS, from, from + 7 * DAY).size.toLong())
         }
     }
     val monthQueryMs = timedMs {
         repeat(12) { m ->
             val from = YEAR_2024 + m * 30 * DAY
-            mix(h.calendar.eventsInRange(ALL_CALS, from, from + 30 * DAY).size.toLong())
+            mix(h.eventsInRange(ALL_CALS, from, from + 30 * DAY).size.toLong())
         }
     }
     val agendaJoinMs = timedMs {
@@ -213,14 +237,14 @@ suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope
         }
     }
     val searchContactsMs = timedMs {
-        repeat(100) { i -> mix(h.contacts.search(FIRST[i % FIRST.size].take(2 + i % 3)).sumOf { it.id }) }
+        repeat(100) { i -> mix(h.searchContacts(FIRST[i % FIRST.size].take(2 + i % 3)).sumOf { it.id }) }
     }
-    val syncContactsMs = timedMs { h.doSyncContacts(contactsBatch) }
-    val syncCalendarMs = timedMs { h.doSyncCalendar(calendarBatch) }
+    val syncContactsMs = timedMs { h.upsertContacts(contactsBatch) }
+    val syncCalendarMs = timedMs { h.replaceCalendar(SYNC_CALENDAR_ID, calendarBatch.first, calendarBatch.second) }
     val parallelSyncMs = timedMs {
         listOf(
-            async(Dispatchers.Default) { h.doSyncContacts(contactsBatch) },
-            async(Dispatchers.Default) { h.doSyncCalendar(calendarBatch) },
+            async(Dispatchers.Default) { h.upsertContacts(contactsBatch) },
+            async(Dispatchers.Default) { h.replaceCalendar(SYNC_CALENDAR_ID, calendarBatch.first, calendarBatch.second) },
         ).awaitAll()
     }
 
@@ -228,11 +252,12 @@ suspend fun largeRun(scenario: String, baseDir: String): String = coroutineScope
     fullGc()
     val mEnd = memory()
     val dbSizeMb = h.sizeMb()
-    val dbCount = h.all.size
+    val dbCount = h.dbCount
+    val sqlite = h.sqliteVersion()
     h.close()
 
     buildString {
-        append("""{"mode":"large-run","platform":"$PLATFORM","scenario":"$scenario","dbCount":$dbCount""")
+        append(header("large-run", scenario) + ""","dbCount":$dbCount,"sqlite":"$sqlite"""")
         append(""","openMs":$openMs,"weekQueryMs":$weekQueryMs,"monthQueryMs":$monthQueryMs,"agendaJoinMs":$agendaJoinMs""")
         append(""","searchContactsMs":$searchContactsMs,"syncContactsMs":$syncContactsMs,"syncCalendarMs":$syncCalendarMs,"parallelSyncMs":$parallelSyncMs""")
         append(""","checksum":$checksum,"dbSizeMb":$dbSizeMb""")

@@ -1,0 +1,24 @@
+-- Same schema as bench.large.ContactEntity in Room.
+CREATE TABLE contacts (
+    id INTEGER PRIMARY KEY NOT NULL,
+    accountId INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    organization TEXT NOT NULL,
+    notes TEXT NOT NULL
+);
+CREATE INDEX index_contacts_email ON contacts(email);
+CREATE INDEX index_contacts_name ON contacts(name);
+
+upsert:
+INSERT OR REPLACE INTO contacts(id, accountId, name, email, phone, organization, notes) VALUES (?, ?, ?, ?, ?, ?, ?);
+
+count:
+SELECT COUNT(*) FROM contacts;
+
+byEmails:
+SELECT * FROM contacts WHERE email IN ?;
+
+search:
+SELECT * FROM contacts WHERE name LIKE :prefix || '%' ORDER BY name LIMIT 50;

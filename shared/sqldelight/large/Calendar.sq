@@ -1,0 +1,62 @@
+-- Same schema as bench.large.CalendarEntity / EventEntity / AttendeeEntity in Room.
+CREATE TABLE calendars (
+    id INTEGER PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL
+);
+
+CREATE TABLE events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    calendarId INTEGER NOT NULL,
+    uid TEXT NOT NULL,
+    title TEXT NOT NULL,
+    location TEXT NOT NULL,
+    description TEXT NOT NULL,
+    startMs INTEGER NOT NULL,
+    endMs INTEGER NOT NULL,
+    rrule TEXT,
+    updatedAt INTEGER NOT NULL
+);
+CREATE INDEX index_events_calendarId_startMs ON events(calendarId, startMs);
+
+CREATE TABLE attendees (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    eventId INTEGER NOT NULL,
+    email TEXT NOT NULL,
+    status INTEGER NOT NULL
+);
+CREATE INDEX index_attendees_eventId ON attendees(eventId);
+CREATE INDEX index_attendees_email ON attendees(email);
+
+insertCalendar:
+INSERT INTO calendars(id, name, color) VALUES (?, ?, ?);
+
+insertEvent:
+INSERT INTO events(id, calendarId, uid, title, location, description, startMs, endMs, rrule, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+insertAttendee:
+INSERT INTO attendees(eventId, email, status) VALUES (?, ?, ?);
+
+countEvents:
+SELECT COUNT(*) FROM events;
+
+countAttendees:
+SELECT COUNT(*) FROM attendees;
+
+eventsInRange:
+SELECT * FROM events WHERE calendarId IN :cals AND startMs > :fromMs - 86400000 AND startMs < :toMs AND endMs > :fromMs ORDER BY startMs;
+
+attendeesInRange:
+SELECT a.* FROM attendees a JOIN events e ON a.eventId = e.id
+WHERE e.calendarId IN :cals AND e.startMs > :fromMs - 86400000 AND e.startMs < :toMs AND e.endMs > :fromMs;
+
+agendaRaw:
+SELECT e.id AS eventId, e.title, e.startMs, a.email AS attendeeEmail FROM events e
+JOIN attendees a ON a.eventId = e.id
+WHERE e.calendarId IN :cals AND e.startMs > :fromMs - 86400000 AND e.startMs < :toMs AND e.endMs > :fromMs ORDER BY e.startMs, a.id;
+
+deleteAttendeesOf:
+DELETE FROM attendees WHERE eventId IN (SELECT id FROM events WHERE calendarId = :calendarId);
+
+deleteEventsOf:
+DELETE FROM events WHERE calendarId = :calendarId;

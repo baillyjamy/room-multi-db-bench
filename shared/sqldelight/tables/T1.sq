@@ -1,0 +1,18 @@
+CREATE TABLE t1 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name TEXT NOT NULL,
+    value INTEGER NOT NULL,
+    payload TEXT NOT NULL
+);
+
+insert:
+INSERT INTO t1(name, value, payload) VALUES (?, ?, ?);
+
+count:
+SELECT COUNT(*) FROM t1;
+
+latest:
+SELECT * FROM t1 ORDER BY id DESC LIMIT 200;
+
+scan:
+SELECT COALESCE(SUM(LENGTH(payload)), 0) FROM t1;

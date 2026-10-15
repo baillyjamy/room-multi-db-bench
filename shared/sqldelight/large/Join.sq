@@ -1,0 +1,5 @@
+-- Only possible when contacts and events live in the same database (L1).
+agenda:
+SELECT e.id AS eventId, e.title, e.startMs, a.email AS attendeeEmail, c.name AS contactName FROM events e
+JOIN attendees a ON a.eventId = e.id LEFT JOIN contacts c ON c.email = a.email
+WHERE e.calendarId IN :cals AND e.startMs > :fromMs - 86400000 AND e.startMs < :toMs AND e.endMs > :fromMs ORDER BY e.startMs, a.id;

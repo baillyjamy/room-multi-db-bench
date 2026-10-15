@@ -14,6 +14,7 @@ class MainActivity : Activity() {
         val mode = intent.getStringExtra("mode") ?: "run"
         val scenario = intent.getStringExtra("scenario") ?: "S1"
         val dir = File(noBackupFilesDir, "roombench").absolutePath
+        bench.sqldelight.appContext = applicationContext
         Thread {
             val result = runBlocking { dispatch(mode, scenario, dir) }
             Log.i("ROOMBENCH", result)

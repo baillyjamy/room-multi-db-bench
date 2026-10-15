@@ -12,16 +12,18 @@ def read(name):
 
 
 data, large = {}, {}
-for f in ("android", "ios", "macos", "jvm"):
-    rows = read(f)
-    if rows is not None:
-        data[f] = [r for r in rows if r.get("mode") == "run"]
-    rows = read(f"{f}-large")
-    if rows is not None:
-        runs = [r for r in rows if r.get("mode") == "large-run"]
-        if runs:
-            large[f] = {"runs": runs, "seeds": [r for r in rows if r.get("mode") == "large-seed"]}
+for engine, suffix in (("room", ""), ("sqldelight", "-sqldelight")):
+    data[engine], large[engine] = {}, {}
+    for f in ("android", "ios", "macos", "jvm"):
+        rows = read(f"{f}{suffix}")
+        if rows is not None:
+            data[engine][f] = [r for r in rows if r.get("mode") == "run"]
+        rows = read(f"{f}{suffix}-large")
+        if rows is not None:
+            runs = [r for r in rows if r.get("mode") == "large-run"]
+            if runs:
+                large[engine][f] = {"runs": runs, "seeds": [r for r in rows if r.get("mode") == "large-seed"]}
 html = (root / "scripts" / "report_template.html").read_text()
 html = html.replace("/*__DATA__*/null", json.dumps(data)).replace("/*__LARGE__*/null", json.dumps(large))
 (root / "index.html").write_text(html)
-print("index.html written" + ("" if large else " (no large-volume data yet)"))
+print("index.html written: " + ", ".join(f"{e} {len(d)} platform(s)" for e, d in data.items()))

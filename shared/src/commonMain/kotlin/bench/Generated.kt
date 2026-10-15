@@ -267,7 +267,7 @@ abstract class MonoDb : RoomDatabase() {
     abstract fun d7(): D7
     abstract fun d8(): D8
     abstract fun d9(): D9
-    fun handle(path: String) = DbHandle("MonoDb", path, this, listOf(d0().ops(), d1().ops(), d2().ops(), d3().ops(), d4().ops(), d5().ops(), d6().ops(), d7().ops(), d8().ops(), d9().ops()))
+    fun handle(path: String) = roomHandle("MonoDb", path, listOf(d0().ops(), d1().ops(), d2().ops(), d3().ops(), d4().ops(), d5().ops(), d6().ops(), d7().ops(), d8().ops(), d9().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -282,7 +282,7 @@ expect fun monoDbBuilder(path: String): RoomDatabase.Builder<MonoDb>
 abstract class ContactsDb : RoomDatabase() {
     abstract fun d0(): D0
     abstract fun d1(): D1
-    fun handle(path: String) = DbHandle("ContactsDb", path, this, listOf(d0().ops(), d1().ops()))
+    fun handle(path: String) = roomHandle("ContactsDb", path, listOf(d0().ops(), d1().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -303,7 +303,7 @@ abstract class CalendarDb : RoomDatabase() {
     abstract fun d7(): D7
     abstract fun d8(): D8
     abstract fun d9(): D9
-    fun handle(path: String) = DbHandle("CalendarDb", path, this, listOf(d2().ops(), d3().ops(), d4().ops(), d5().ops(), d6().ops(), d7().ops(), d8().ops(), d9().ops()))
+    fun handle(path: String) = roomHandle("CalendarDb", path, listOf(d2().ops(), d3().ops(), d4().ops(), d5().ops(), d6().ops(), d7().ops(), d8().ops(), d9().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -318,7 +318,7 @@ expect fun calendarDbBuilder(path: String): RoomDatabase.Builder<CalendarDb>
 abstract class FiveDb0 : RoomDatabase() {
     abstract fun d0(): D0
     abstract fun d1(): D1
-    fun handle(path: String) = DbHandle("FiveDb0", path, this, listOf(d0().ops(), d1().ops()))
+    fun handle(path: String) = roomHandle("FiveDb0", path, listOf(d0().ops(), d1().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -333,7 +333,7 @@ expect fun fiveDb0Builder(path: String): RoomDatabase.Builder<FiveDb0>
 abstract class FiveDb1 : RoomDatabase() {
     abstract fun d2(): D2
     abstract fun d3(): D3
-    fun handle(path: String) = DbHandle("FiveDb1", path, this, listOf(d2().ops(), d3().ops()))
+    fun handle(path: String) = roomHandle("FiveDb1", path, listOf(d2().ops(), d3().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -348,7 +348,7 @@ expect fun fiveDb1Builder(path: String): RoomDatabase.Builder<FiveDb1>
 abstract class FiveDb2 : RoomDatabase() {
     abstract fun d4(): D4
     abstract fun d5(): D5
-    fun handle(path: String) = DbHandle("FiveDb2", path, this, listOf(d4().ops(), d5().ops()))
+    fun handle(path: String) = roomHandle("FiveDb2", path, listOf(d4().ops(), d5().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -363,7 +363,7 @@ expect fun fiveDb2Builder(path: String): RoomDatabase.Builder<FiveDb2>
 abstract class FiveDb3 : RoomDatabase() {
     abstract fun d6(): D6
     abstract fun d7(): D7
-    fun handle(path: String) = DbHandle("FiveDb3", path, this, listOf(d6().ops(), d7().ops()))
+    fun handle(path: String) = roomHandle("FiveDb3", path, listOf(d6().ops(), d7().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -378,7 +378,7 @@ expect fun fiveDb3Builder(path: String): RoomDatabase.Builder<FiveDb3>
 abstract class FiveDb4 : RoomDatabase() {
     abstract fun d8(): D8
     abstract fun d9(): D9
-    fun handle(path: String) = DbHandle("FiveDb4", path, this, listOf(d8().ops(), d9().ops()))
+    fun handle(path: String) = roomHandle("FiveDb4", path, listOf(d8().ops(), d9().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -392,7 +392,7 @@ expect fun fiveDb4Builder(path: String): RoomDatabase.Builder<FiveDb4>
 @ConstructedBy(TenDb0Ctor::class)
 abstract class TenDb0 : RoomDatabase() {
     abstract fun d0(): D0
-    fun handle(path: String) = DbHandle("TenDb0", path, this, listOf(d0().ops()))
+    fun handle(path: String) = roomHandle("TenDb0", path, listOf(d0().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -406,7 +406,7 @@ expect fun tenDb0Builder(path: String): RoomDatabase.Builder<TenDb0>
 @ConstructedBy(TenDb1Ctor::class)
 abstract class TenDb1 : RoomDatabase() {
     abstract fun d1(): D1
-    fun handle(path: String) = DbHandle("TenDb1", path, this, listOf(d1().ops()))
+    fun handle(path: String) = roomHandle("TenDb1", path, listOf(d1().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -420,7 +420,7 @@ expect fun tenDb1Builder(path: String): RoomDatabase.Builder<TenDb1>
 @ConstructedBy(TenDb2Ctor::class)
 abstract class TenDb2 : RoomDatabase() {
     abstract fun d2(): D2
-    fun handle(path: String) = DbHandle("TenDb2", path, this, listOf(d2().ops()))
+    fun handle(path: String) = roomHandle("TenDb2", path, listOf(d2().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -434,7 +434,7 @@ expect fun tenDb2Builder(path: String): RoomDatabase.Builder<TenDb2>
 @ConstructedBy(TenDb3Ctor::class)
 abstract class TenDb3 : RoomDatabase() {
     abstract fun d3(): D3
-    fun handle(path: String) = DbHandle("TenDb3", path, this, listOf(d3().ops()))
+    fun handle(path: String) = roomHandle("TenDb3", path, listOf(d3().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -448,7 +448,7 @@ expect fun tenDb3Builder(path: String): RoomDatabase.Builder<TenDb3>
 @ConstructedBy(TenDb4Ctor::class)
 abstract class TenDb4 : RoomDatabase() {
     abstract fun d4(): D4
-    fun handle(path: String) = DbHandle("TenDb4", path, this, listOf(d4().ops()))
+    fun handle(path: String) = roomHandle("TenDb4", path, listOf(d4().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -462,7 +462,7 @@ expect fun tenDb4Builder(path: String): RoomDatabase.Builder<TenDb4>
 @ConstructedBy(TenDb5Ctor::class)
 abstract class TenDb5 : RoomDatabase() {
     abstract fun d5(): D5
-    fun handle(path: String) = DbHandle("TenDb5", path, this, listOf(d5().ops()))
+    fun handle(path: String) = roomHandle("TenDb5", path, listOf(d5().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -476,7 +476,7 @@ expect fun tenDb5Builder(path: String): RoomDatabase.Builder<TenDb5>
 @ConstructedBy(TenDb6Ctor::class)
 abstract class TenDb6 : RoomDatabase() {
     abstract fun d6(): D6
-    fun handle(path: String) = DbHandle("TenDb6", path, this, listOf(d6().ops()))
+    fun handle(path: String) = roomHandle("TenDb6", path, listOf(d6().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -490,7 +490,7 @@ expect fun tenDb6Builder(path: String): RoomDatabase.Builder<TenDb6>
 @ConstructedBy(TenDb7Ctor::class)
 abstract class TenDb7 : RoomDatabase() {
     abstract fun d7(): D7
-    fun handle(path: String) = DbHandle("TenDb7", path, this, listOf(d7().ops()))
+    fun handle(path: String) = roomHandle("TenDb7", path, listOf(d7().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -504,7 +504,7 @@ expect fun tenDb7Builder(path: String): RoomDatabase.Builder<TenDb7>
 @ConstructedBy(TenDb8Ctor::class)
 abstract class TenDb8 : RoomDatabase() {
     abstract fun d8(): D8
-    fun handle(path: String) = DbHandle("TenDb8", path, this, listOf(d8().ops()))
+    fun handle(path: String) = roomHandle("TenDb8", path, listOf(d8().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")
@@ -518,7 +518,7 @@ expect fun tenDb8Builder(path: String): RoomDatabase.Builder<TenDb8>
 @ConstructedBy(TenDb9Ctor::class)
 abstract class TenDb9 : RoomDatabase() {
     abstract fun d9(): D9
-    fun handle(path: String) = DbHandle("TenDb9", path, this, listOf(d9().ops()))
+    fun handle(path: String) = roomHandle("TenDb9", path, listOf(d9().ops()))
 }
 
 @Suppress("KotlinNoActualForExpect")

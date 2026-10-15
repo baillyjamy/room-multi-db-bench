@@ -3,10 +3,15 @@
 # Every measurement is a fresh process (`am start -S`), scenarios are interleaved round-robin.
 set -euo pipefail
 RUNS=${RUNS:-15}
-SCENARIOS=${SCENARIOS:-"S1 S2 S5 S10 S5c"}
+ENGINE=${ENGINE:-room} # room | sqldelight (S5c is Room-only)
 ADB=${ADB:-$ANDROID_HOME/platform-tools/adb}
 PREFIX=${PREFIX:-} # "large-" for the large-volume suite
-OUT=${OUT:-results/android${PREFIX:+-large}.jsonl}
+if [[ -n $PREFIX ]]; then DEFAULT_SCENARIOS="L1 L2"
+elif [[ $ENGINE == room ]]; then DEFAULT_SCENARIOS="S1 S2 S5 S10 S5c"
+else DEFAULT_SCENARIOS="S1 S2 S5 S10"; fi
+SCENARIOS=${SCENARIOS:-$DEFAULT_SCENARIOS}
+SUFFIX=$([[ $ENGINE == room ]] || echo "-$ENGINE")
+OUT=${OUT:-results/android$SUFFIX${PREFIX:+-large}.jsonl}
 cd "$(dirname "$0")/.."
 mkdir -p results && touch "$OUT"; [[ -n "${KEEP:-}" ]] || : > "$OUT"
 
@@ -23,8 +28,9 @@ launch() { # mode scenario
   echo "timeout $1 $2" >&2; exit 1
 }
 
-for s in $SCENARIOS; do launch "${PREFIX}seed" "$s"; done
-OUT=/dev/null launch "${PREFIX}run" "${SCENARIOS%% *}" >/dev/null # warm-up (dex/OS caches), discarded
+arg() { [[ $ENGINE == room ]] && echo "$1" || echo "$ENGINE:$1"; }
+for s in $SCENARIOS; do launch "${PREFIX}seed" "$(arg "$s")"; done
+OUT=/dev/null launch "${PREFIX}run" "$(arg "${SCENARIOS%% *}")" >/dev/null # warm-up (dex/OS caches), discarded
 for i in $(seq 1 "$RUNS"); do
-  for s in $SCENARIOS; do launch "${PREFIX}run" "$s"; done
+  for s in $SCENARIOS; do launch "${PREFIX}run" "$(arg "$s")"; done
 done

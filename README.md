@@ -1,30 +1,56 @@
-# Room KMP : coût de plusieurs bases de données
+# Room & SQLDelight KMP : coût de plusieurs bases de données
 
-**Question :** répartir un même schéma Room sur plusieurs bases SQLite (par ex. contacts + calendrier) a-t-il un coût de performance significatif sur Android, iOS, macOS et JVM desktop ?
+**Question :** répartir un même schéma sur plusieurs bases SQLite (par ex. contacts + calendrier) a-t-il un coût de performance significatif sur Android, iOS, macOS et JVM desktop ? Est-ce propre à Room ? On mesure avec **Room 3** et avec **SQLDelight 2**.
 
 ## TL;DR
+
+### Room
 
 Pour **2 bases** (le cas contacts + calendrier), par rapport à une base unique (médianes sur 20 runs) :
 
 | | Android (émulateur API 36) | iOS app SwiftUI (simulateur 26.5) | macOS natif (K/N) | JVM desktop |
 |---|---:|---:|---:|---:|
-| Ouverture (build + 1re requête) | **+4,9 ms** | **+1,7 ms** | **+1,3 ms** | ≈ (bruit du démarrage JVM, ±80 ms) |
-| Mémoire après ouverture | **+0,9 Mo** (PSS) | **+1,0 Mo** (phys_footprint) | **+1,1 Mo** (phys_footprint) | **+1,2 Mo** (RSS) |
-| Mémoire pire cas (toutes les connexions ouvertes, caches pleins) | +8,1 Mo | +9,0 Mo | +9,5 Mo | +12,1 Mo |
+| Ouverture (build + 1re requête) | **+4,9 ms** | **+1,7 ms** | **+1,3 ms** | ≈ (+0,7 ms, bruit du démarrage JVM ±80 ms) |
+| Mémoire après ouverture | **+0,9 Mo** (PSS) | **+1,0 Mo** (phys_footprint) | **+1,1 Mo** (phys_footprint) | **+0,8 Mo** (RSS) |
+| Mémoire pire cas (toutes les connexions ouvertes, caches pleins) | +8,1 Mo | +9,0 Mo | +9,5 Mo | +4,4 Mo |
 | Écriture sur 1 table | ≈ (pas plus lent) | ≈ | ≈ | ≈ |
 | Lectures concurrentes | ≈ / plus rapide | ≈ / plus rapide | ≈ / plus rapide | ≈ / plus rapide |
-| Action qui écrit **dans les 2 bases** | +0,8 ms par action | +0,07 ms par action | +0,06 ms par action | +0,03 ms par action |
+| Action qui écrit **dans les 2 bases** | +0,8 ms par action | +0,07 ms par action | +0,06 ms par action | +0,04 ms par action |
 
 **Gros volume** (vraie volumétrie de calendrier, ~120 Mo : 20 000 contacts, 205 000 événements, ~513 000 participants). Comparaison L2 (contacts + calendrier) vs L1 (une base), médianes sur 20 runs. Les checksums sont identiques : les deux renvoient exactement les mêmes données.
 
 | | Android | iOS app | macOS natif | JVM desktop |
 |---|---:|---:|---:|---:|
-| Ouverture | +7 ms | ≈ (−2 ms) | +2 ms | ≈ (+19 ms, dans le bruit JVM) |
+| Ouverture | +7 ms | ≈ (−2 ms) | +2 ms | ≈ (+17 ms, dans le bruit JVM) |
 | Vues semaine / mois, recherche de contacts | ≈ | ≈ | ≈ | ≈ |
-| **Agenda 12 mois + nom du contact de chaque participant** (JOIN SQL vs jointure en mémoire) | **+118 ms (+36 %)**, soit ~10 ms par mois affiché | **+57 ms (+19 %)**, ~5 ms par mois | **+72 ms (+27 %)**, ~6 ms par mois | **+101 ms (+35 %)**, ~8 ms par mois |
+| **Agenda 12 mois + nom du contact de chaque participant** (JOIN SQL vs jointure en mémoire) | **+118 ms (+36 %)**, soit ~10 ms par mois affiché | **+57 ms (+19 %)**, ~5 ms par mois | **+72 ms (+27 %)**, ~6 ms par mois | **+93 ms (+32 %)**, ~8 ms par mois |
 | Synchros contacts / calendrier seules | ≈ | ≈ | ≈ | ≈ |
-| **Les deux synchros en parallèle** | **−17 ms (−10 %)** | **−29 ms (−10 %)** | **−12 ms (−7 %)** | **−14 ms (−8 %)** |
-| Mémoire pire cas | +5,8 Mo | +7,8 Mo | +6,5 Mo | +28 Mo (RSS, natif : le heap Java est identique) |
+| **Les deux synchros en parallèle** | **−17 ms (−10 %)** | **−29 ms (−10 %)** | **−12 ms (−7 %)** | **−16 ms (−9 %)** |
+| Mémoire pire cas | +5,8 Mo | +7,8 Mo | +6,5 Mo | +30 Mo (RSS, natif : le heap Java est identique) |
+
+### SQLDelight
+
+Mêmes scénarios, mêmes données, mêmes requêtes SQL, mêmes réglages (WAL, `synchronous=NORMAL`), drivers officiels de chaque plateforme. Médianes sur 20 runs ; les checksums sont identiques à ceux de Room.
+
+| 2 bases vs 1 | Android (`AndroidSqliteDriver`) | iOS app (`NativeSqliteDriver`) | macOS natif (`NativeSqliteDriver`) | JVM (`JdbcSqliteDriver`) |
+|---|---:|---:|---:|---:|
+| Ouverture | **+30 ms** | +2,4 ms | +4,5 ms | ≈ (+18 ms, bruit JVM) |
+| Mémoire après ouverture | +1,5 Mo | +1,0 Mo | +1,1 Mo | ≈ |
+| Mémoire pire cas | +0,6 Mo | +2,2 Mo | +5,4 Mo | ≈ |
+| Action qui écrit dans les 2 bases | ≈ | +0,06 ms par action | +0,03 ms par action | +0,9 ms par action |
+| Gros volume : ouverture | +21 ms | +6 ms | +1 ms | ≈ |
+| Gros volume : **agenda + noms des contacts** | **+116 ms (+35 %)** | **+135 ms (+39 %)** | **+131 ms (+39 %)** | **+190 ms (+56 %)** |
+| Gros volume : **synchros en parallèle** | **−10 ms (−7 %)** | **−15 ms (−6 %)** | **−10 ms (−6 %)** | **−21 ms (−9 %)** |
+
+**Room vs SQLDelight** (une seule base, valeurs absolues, médianes) : aucune bibliothèque n'est plus rapide partout.
+
+| | Android | iOS app | macOS | JVM |
+|---|---:|---:|---:|---:|
+| Ouverture (S1) | Room 9 ms · SQLDelight 34 ms | 3,9 · 4,0 ms | 6,5 · 3,9 ms | 269 · 331 ms |
+| Écriture sur 1 table, 200 tx (S1) | Room 116 ms · SQLDelight **51 ms** | 16 · **11** ms | 15 · **7** ms | **27** · 132 ms |
+| Lectures concurrentes (S1) | 130 · 124 ms | **92** · 178 ms | **95** · 187 ms | **68** · 125 ms |
+| Agenda 12 mois (L1, JOIN SQL) | 326 · 334 ms | **300** · 343 ms | **271** · 334 ms | **291** · 343 ms |
+| Mémoire pire cas (S1) | 14,9 · **11,9** Mo | 19,5 · **14,5** Mo | 29,8 · **19,0** Mo | **105** · 128 Mo |
 
 Conclusions factuelles :
 
@@ -41,12 +67,22 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 - **En contrepartie,** des synchros contacts et calendrier simultanées ne se bloquent plus mutuellement (−8 à −10 %).
 - **Les 4 plateformes donnent le même profil** (Android, iOS, macOS, JVM) : c'est le moteur SQLite qui décide, pas la plateforme.
 
+**Room vs SQLDelight :**
+
+- **Le coût de plusieurs bases n'est pas propre à Room.** SQLDelight montre le même profil : perte du `JOIN` (+35 à +56 % sur l'agenda), synchros parallèles plus rapides (−6 à −9 %), quelques ms à l'ouverture. Ce coût vient de SQLite, pas de la bibliothèque. L'affirmation « Room n'aime pas plusieurs bases » n'est pas confirmée par les mesures.
+- **Le surcoût mémoire en pire cas est plus faible avec SQLDelight** (+0,6 à +5,4 Mo au lieu de +8 à +9,5 Mo) parce qu'il ouvre moins de connexions par base (`NativeSqliteDriver` : 1 writer + 1 reader par défaut). Cela confirme encore que ce coût suit le nombre de connexions.
+- **Exception Android :** chaque base supplémentaire coûte environ **30 ms à l'ouverture** avec `AndroidSqliteDriver` (SQLite du système, via le framework), contre 5 ms avec Room (`BundledSQLiteDriver`).
+- **En absolu, aucune bibliothèque ne gagne partout :** SQLDelight écrit plus vite en natif et sur Android ; Room lit plus vite en concurrence (pool de 4 readers) et sur JVM.
+
 ## Méthodologie
 
 **Principe :** même schéma, mêmes données et même charge de travail. Seul le découpage en fichiers change.
 
 - **Schéma :** 10 tables identiques (`t0`…`t9` : id, name, value, payload ~210 octets).
-- **Stack :** Kotlin 2.4.10, Room **3.0.2** (`androidx.room3`), `BundledSQLiteDriver` (sqlite-bundled 2.6.2), `setQueryCoroutineContext(Dispatchers.IO)`. Configuration Room par défaut : WAL, pool de **1 writer + 4 readers par base** (`WAL_DEFAULT_NUMBER_OF_READERS = 4`, relevé dans le bytecode de room3-runtime 3.0.2).
+- **Stack Room :** Kotlin 2.4.10, Room **3.0.2** (`androidx.room3`), `BundledSQLiteDriver` (sqlite-bundled 2.6.2), `setQueryCoroutineContext(Dispatchers.IO)`. Configuration Room par défaut : WAL, pool de **1 writer + 4 readers par base** (`WAL_DEFAULT_NUMBER_OF_READERS = 4`, relevé dans le bytecode de room3-runtime 3.0.2).
+- **Stack SQLDelight :** SQLDelight **2.4.1**, drivers officiels : `AndroidSqliteDriver` (SQLite du système Android, 3.50.4), `NativeSqliteDriver` (iOS / macOS, pool de 1 writer + 1 reader par défaut), `JdbcSqliteDriver` (sqlite-jdbc, SQLite 3.53.4, une connexion par thread). Réglages alignés sur Room : WAL et `synchronous=NORMAL`. Lectures sur `Dispatchers.IO`, écritures dans `transaction {}`. Mêmes DDL et index que Room (fichiers `.sq` dans `shared/sqldelight/`), résultats mappés vers les mêmes classes Kotlin.
+- **Version de SQLite :** chaque run enregistre `sqlite_version()`. En natif (iOS, macOS), le binaire contient déjà la SQLite embarquée de Room : `NativeSqliteDriver` l'utilise (3.50.1), donc **même moteur** pour les deux bibliothèques. Sur Android et JVM, les versions diffèrent (système / sqlite-jdbc).
+- **Choix de la bibliothèque :** le scénario est préfixé (`sqldelight:S2`, `sqldelight:L1`) ; sans préfixe, c'est Room. `S5c` (pool d'une connexion) n'existe qu'avec Room.
 
 | Scénario | Découpage |
 |---|---|
@@ -108,13 +144,13 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 - **Machine :** MacBook Apple M3 Max, 36 Go, macOS 26.7.
 - **Android :** émulateur `sdk_gphone16k_arm64`, Android 16 (API 36), 4 cœurs, 16 Go.
 - **iOS :** simulateur iPhone 17, iOS 26.5.
-- **macOS / JVM :** directement sur le Mac ; JVM = OpenJDK 25.
+- **macOS / JVM :** directement sur le Mac ; JVM = OpenJDK 27.
 
 ## Résultats
 
 **Rapport visuel : [baillyjamy.github.io/room-multi-db-bench](https://baillyjamy.github.io/room-multi-db-bench/)** (`index.html`) (régénérer : `python3 scripts/report.py`).
 
-Tableaux complets (médiane et Q1–Q3, écart par rapport à S1) : **[RESULTS.md](RESULTS.md)**. Données brutes, une ligne JSON par run : [`results/`](results/).
+Tableaux complets, Room et SQLDelight (médiane et Q1–Q3, écart par rapport à S1 / L1) : **[RESULTS.md](RESULTS.md)**. Données brutes, une ligne JSON par run : [`results/`](results/).
 
 ## Limites
 
@@ -122,6 +158,7 @@ Tableaux complets (médiane et Q1–Q3, écart par rapport à S1) : **[RESULTS.m
 - **Gros volume synthétique :** la volumétrie est réaliste, mais la distribution des données peut différer de celle d'une vraie app.
 - **Pire cas mémoire :** `*EndKb` force l'ouverture de toutes les connexions et le remplissage de tous les caches. Dans une vraie app, les readers ne s'ouvrent qu'en cas d'accès concurrents.
 - **JVM :** chaque mesure démarre une JVM à froid (chargement des classes, JIT), d'où un bruit élevé sur `openMs` (~±80 ms). La RSS inclut la mémoire que l'allocateur natif ne rend pas au système : à lire comme un ordre de grandeur.
+- **SQLDelight sur Android et JVM :** la version de SQLite n'est pas la même qu'avec Room (système / sqlite-jdbc contre SQLite embarquée). La comparaison absolue Room vs SQLDelight y mélange donc bibliothèque et moteur ; la comparaison 1 base vs 2 bases, elle, reste valable pour chaque bibliothèque.
 - **Partage entre apps non testé :** l'accès multi-process (App Group iOS) n'est pas mesuré.
 
 ## Reproduire
@@ -129,7 +166,7 @@ Tableaux complets (médiane et Q1–Q3, écart par rapport à S1) : **[RESULTS.m
 Prérequis : JDK 17+, Android SDK, Xcode, un Mac Apple Silicon (cible `macosArm64`), un émulateur ou appareil Android (`adb`) et un simulateur iOS démarré.
 
 ```bash
-python3 scripts/generate.py   # génère les entités, DAO et bases (déjà fait)
+python3 scripts/generate.py   # génère entités, DAO, bases Room et fichiers .sq SQLDelight (déjà fait)
 ./gradlew :androidApp:assembleRelease :shared:linkReleaseExecutableMacosArm64 :shared:installJvmDist
 # App iOS (le projet est généré par Tuist depuis iosApp/Project.swift ; la phase de build lance Gradle pour le framework)
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Release \
@@ -145,7 +182,15 @@ export PREFIX=large- SCENARIOS="L1 L2"
 RUNS=20 ./scripts/run_ios.sh && RUNS=20 POLLS=600 ./scripts/run_android.sh
 RUNS=20 TARGET=macos ./scripts/run_desktop.sh && RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
 
-python3 scripts/analyze.py results/{android,ios,macos,jvm}.jsonl results/{android,ios,macos,jvm}-large.jsonl > RESULTS.md
+# Même chose avec SQLDelight : ENGINE=sqldelight -> results/*-sqldelight[-large].jsonl (les résultats Room ne sont pas touchés)
+unset PREFIX SCENARIOS
+ENGINE=sqldelight RUNS=20 ./scripts/run_ios.sh && ENGINE=sqldelight RUNS=20 ./scripts/run_android.sh
+ENGINE=sqldelight RUNS=20 TARGET=macos ./scripts/run_desktop.sh && ENGINE=sqldelight RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
+export ENGINE=sqldelight PREFIX=large-
+RUNS=20 ./scripts/run_ios.sh && RUNS=20 POLLS=600 ./scripts/run_android.sh
+RUNS=20 TARGET=macos ./scripts/run_desktop.sh && RUNS=20 TARGET=jvm ./scripts/run_desktop.sh
+
+python3 scripts/analyze.py results/*.jsonl > RESULTS.md
 python3 scripts/report.py
 ```
 
@@ -158,4 +203,5 @@ python3 scripts/report.py
   - « *Push work to SQLite engine* » : explique le surcoût de la jointure agenda en mémoire en L2.
   - En WAL, « *every commit issues an fsync* » : explique le coût d'une action qui écrit dans plusieurs bases.
 - **[SQLite – ATTACH DATABASE](https://www.sqlite.org/lang_attach.html) :** ajoute un autre fichier à la même connexion, ce qui permet un `JOIN` entre deux bases. C'est l'alternative si ce `JOIN` est indispensable. Attention : la page Android ci-dessus déconseille WAL avec `ATTACH`, et Room ne le gère pas nativement.
+- **[SQLDelight – Multiplatform](https://sqldelight.github.io/sqldelight/latest/multiplatform_sqlite/) :** drivers officiels par plateforme (`AndroidSqliteDriver`, `NativeSqliteDriver`, `JdbcSqliteDriver`) utilisés pour la comparaison.
 - **[Apple – containerURL(forSecurityApplicationGroupIdentifier:)](https://developer.apple.com/documentation/foundation/filemanager/containerurl(forsecurityapplicationgroupidentifier:)) :** un App Group est un « *group's shared directory* », un dossier partagé entre les apps d'un même développeur, **pas un process dédié**.

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Summarise room-multi-db-bench JSONL results as Markdown.
 
-Usage: python3 scripts/analyze.py results/{android,ios,macos,jvm}.jsonl results/{android,ios,macos,jvm}-large.jsonl > RESULTS.md
+Usage: python3 scripts/analyze.py results/*.jsonl > RESULTS.md
+(results/<platform>[-sqldelight][-large].jsonl: Room by default, SQLDelight with the -sqldelight suffix)
 
 Reads "run" lines (small suite, baseline S1) and "large-run" lines (large-volume
 suite, scenarios L1/L2, baseline L1). Seed lines are ignored.
@@ -127,11 +128,13 @@ def render(path, runs):
     scenarios += sorted((s for s in by_scenario if s not in order), key=scenario_sort_key)
 
     platforms = sorted({str(r["platform"]) for r in runs if r.get("platform")})
-    title = ", ".join(platforms) if platforms else path
+    engine = "SQLDelight" if any(r.get("engine") == "sqldelight" for r in runs) else "Room"
+    title = f"{engine} · " + (", ".join(platforms) if platforms else path) + (" · large volume" if large else "")
+    sqlite = sorted({str(r["sqlite"]) for r in runs if r.get("sqlite")})
     counts = ", ".join(f"{s}: {len(by_scenario[s])}" for s in scenarios) or "no runs"
     out.append(f"## {title}")
     out.append("")
-    out.append(f"Source: `{path}` — runs per scenario: {counts}")
+    out.append(f"Source: `{path}` — runs per scenario: {counts}" + (f" — SQLite {', '.join(sqlite)}" if sqlite else ""))
     out.append("")
     if not runs:
         out.append("_No `run` / `large-run` lines found._")
@@ -176,7 +179,7 @@ def main(argv):
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         return 2
-    lines = ["# Room multi-database benchmark results", "", LEGEND, ""]
+    lines = ["# Multi-database benchmark results (Room & SQLDelight)", "", LEGEND, ""]
     for path in argv[1:]:
         try:
             runs = load(path)
