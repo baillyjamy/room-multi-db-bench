@@ -58,6 +58,8 @@
   .badge.ok { color: var(--good); border-color: rgba(61,220,151,.35); } .badge.ko { color: var(--bad); border-color: rgba(255,107,122,.4); } .badge.wait { color: var(--muted); }
   .kpi .rel { font-size: 13px; font-weight: 600; margin-left: 6px; }
   .engine-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 6; padding: 10px 0; background: var(--bg); }
+  .suite[hidden] { display: none; }
+  .toolbar { top: 58px; }
   .engine-bar .seg button { font-size: 14px; padding: 7px 18px; }
   .seg button.on.eng { background: var(--accent); color: #0b0e14; }
   .ratio.fast { color: var(--good); } .ratio.slow { color: var(--warn); }
@@ -72,7 +74,7 @@
     <p class="lead">On répartit le même schéma de 10 tables, avec les mêmes données et la même charge de travail, sur 1, 2, 5 ou 10 bases SQLite. On mesure ensuite le temps d'ouverture, les écritures, les lectures et la mémoire. Chaque mesure tourne dans un process neuf, 20 fois par scénario. Le tout avec <b>Room</b> puis avec <b>SQLDelight</b>.</p>
   </header>
 
-  <div class="engine-bar"><span class="muted">Bibliothèque affichée</span><div class="seg" id="engineSeg"></div></div>
+  <div class="engine-bar"><span class="muted">Jeu de données</span><div class="seg" id="suiteSeg"></div><span class="muted">Bibliothèque</span><div class="seg" id="engineSeg"></div></div>
 
   <div class="verdict">
     <b>Verdict :</b> avec <b>2 bases</b> (contacts + calendrier), le surcoût est de <b>quelques millisecondes à l'ouverture</b> et d'environ <b>1 Mo de mémoire</b>.
@@ -80,19 +82,17 @@
     <br><b>Et ce n'est pas propre à Room :</b> SQLDelight montre exactement le même profil (perte du <code>JOIN</code>, synchros parallèles plus rapides, quelques ms à l'ouverture). Le coût vient de SQLite, pas de la bibliothèque.
   </div>
 
+
+
+
+
+
+  <section class="suite" data-suite="light">
+  <h2>Light : petit jeu de données</h2>
+  <p class="lead">10 tables de 2 000 lignes (~5 Mo au total), réparties sur 1, 2, 5 ou 10 bases. Mesure surtout le <b>coût fixe</b> d'une base de plus : ouverture, connexions, mémoire, transactions.</p>
   <div class="grid cards" id="kpis"></div>
 
-  <section id="versus" hidden>
-  <h2>Room vs SQLDelight</h2>
-  <p class="lead">Même schéma, mêmes données, mêmes requêtes SQL, mêmes réglages (WAL, <code>synchronous=NORMAL</code>). Deux questions : quelle bibliothèque est la plus rapide en absolu, et <b>le coût de plusieurs bases dépend-il de la bibliothèque</b> ?</p>
-  <div class="toolbar"><div class="seg" id="versusSeg"></div></div>
-  <div class="grid charts" id="versusCards"></div>
-  <h3 style="margin-top:28px">Tableau détaillé</h3>
-  <p class="muted">Médianes. « SQLDelight / Room » &lt; 1 = SQLDelight plus rapide. Les colonnes Δ donnent le coût du découpage (S2 − S1, L2 − L1) pour chaque bibliothèque.</p>
-  <div class="card table-wrap"><table id="versusTable"></table></div>
-  </section>
-
-  <h2>L'insight clé : connexions ≠ bases <span class="tag">Room</span></h2>
+  <h3 style="margin-top:28px">L'insight clé : connexions ≠ bases <span class="tag">Room</span></h3>
   <div class="card insight">
     <div>
       <p>Room ouvre jusqu'à <b>1 writer + 4 readers par base</b>, et SQLite garde un cache de pages (~2 Mo max) <b>par connexion</b>. Le scénario de contrôle <span class="tag" style="color:var(--s5c)">S5c</span> utilise <b>5 bases</b> avec une seule connexion chacune, soit <b>5 connexions au total, comme S1</b>.</p>
@@ -102,9 +102,21 @@
     <div id="insightChart"></div>
   </div>
 
-  <section id="large">
+  <h3 style="margin-top:28px">Tous les résultats</h3>
+  <div class="toolbar">
+    <div class="seg" id="platformSeg"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="grid charts" id="charts"></div>
+
+  <h3 style="margin-top:28px">Tableau détaillé</h3>
+  <p class="muted">Médiane (Q1–Q3) ; la ligne Δ donne l'écart de la médiane par rapport à S1.</p>
+  <div class="card table-wrap"><table id="table"></table></div>
+  </section>
+
+  <section id="large" class="suite" data-suite="large">
   <h2>Gros volume : une vraie app calendrier</h2>
-  <p class="lead">Jusqu'ici, les tables étaient petites. Ici on reproduit une vraie app calendrier avec une base d'environ 120 Mo : contacts, calendriers, événements et participants. <span class="scen" style="color:var(--s1);width:auto">L1</span> met tout dans <b>une seule base</b>. <span class="scen" style="color:var(--s2);width:auto">L2</span> sépare <b>deux bases</b> : contacts d'un côté, calendrier de l'autre. Sans clé étrangère entre les deux, l'agenda doit joindre les participants à leurs contacts <b>en mémoire</b>.</p>
+  <p class="lead">On reproduit une vraie app calendrier avec une base d'environ 120 Mo : contacts, calendriers, événements et participants. <span class="scen" style="color:var(--s1);width:auto">L1</span> met tout dans <b>une seule base</b>. <span class="scen" style="color:var(--s2);width:auto">L2</span> sépare <b>deux bases</b> : contacts d'un côté, calendrier de l'autre. Sans clé étrangère entre les deux, l'agenda doit joindre les participants à leurs contacts <b>en mémoire</b>.</p>
   <div id="largeEmpty" class="card muted">Données à venir : lancer la suite gros volume pour remplir <code>results/&lt;plateforme&gt;[-sqldelight]-large.jsonl</code>.</div>
   <div id="largeBody" hidden>
     <p class="muted" id="largeDataset"></p>
@@ -121,16 +133,15 @@
   </div>
   </section>
 
-  <h2>Tous les résultats</h2>
-  <div class="toolbar">
-    <div class="seg" id="platformSeg"></div>
-    <div class="legend" id="legend"></div>
-  </div>
-  <div class="grid charts" id="charts"></div>
-
-  <h2>Tableau détaillé</h2>
-  <p class="muted">Médiane (Q1–Q3) ; la ligne Δ donne l'écart de la médiane par rapport à S1.</p>
-  <div class="card table-wrap"><table id="table"></table></div>
+  <section id="versus" hidden>
+  <h2>Room vs SQLDelight</h2>
+  <p class="lead">Même schéma, mêmes données, mêmes requêtes SQL, mêmes réglages (WAL, <code>synchronous=NORMAL</code>). Deux questions : quelle bibliothèque est la plus rapide en absolu, et <b>le coût de plusieurs bases dépend-il de la bibliothèque</b> ?</p>
+  <div class="toolbar"><div class="seg" id="versusSeg"></div></div>
+  <div class="grid charts" id="versusCards"></div>
+  <h3 style="margin-top:28px">Tableau détaillé</h3>
+  <p class="muted" id="versusNote">Médianes. « SQLDelight / Room » &lt; 1 = SQLDelight plus rapide. Les colonnes Δ donnent le coût du découpage (S2 − S1, L2 − L1) pour chaque bibliothèque.</p>
+  <div class="card table-wrap"><table id="versusTable"></table></div>
+  </section>
 
   <h2>Méthodologie</h2>
   <div class="grid cards">
@@ -361,6 +372,7 @@ const VERSUS = [
   ["large", "mem", "Mémoire en fin de run (gros volume)"],
 ];
 const VPLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => ALL.room[p] && ALL.sqldelight && ALL.sqldelight[p]);
+let suite = location.hash === "#large" ? "large" : "light";
 let currentVersus = VPLATFORMS.includes("android") ? "android" : VPLATFORMS[0];
 function versusRow(p, [suite, key, title]) {
   const k = key === "mem" ? endMemKey(p) : key, unit = k.endsWith("Kb") ? "Mo" : "ms";
@@ -377,14 +389,14 @@ function renderVersus() {
   document.getElementById("versus").hidden = false;
   document.getElementById("versusSeg").innerHTML = segHtml(VPLATFORMS, currentVersus, p => ALL.sqldelight[p][0].platform);
   document.querySelectorAll("#versusSeg button").forEach(b => b.onclick = () => { currentVersus = b.dataset.p; renderVersus(); });
-  const rows = VERSUS.map(v => versusRow(currentVersus, v)).filter(Boolean);
+  const rows = VERSUS.filter(v => v[0] === (suite === "light" ? "small" : "large")).map(v => versusRow(currentVersus, v)).filter(Boolean);
   const ratio = x => `<span class="ratio ${x < 0.95 ? "fast" : x > 1.05 ? "slow" : ""}">× ${fmt(x, 2)}</span>`;
   const d = (x, base, u) => x == null ? "–" : `<span class="delta ${x <= 0 ? "neg" : x / base > 1 ? "big" : "pos"}">${sign(x)} ${u}</span> <span class="iqr">${relTxt(x / base)}</span>`;
   let h = `<tr><th>Métrique</th><th>Room</th><th>SQLDelight</th><th>SQLDelight / Room</th><th>Δ Room (2 bases)</th><th>Δ SQLDelight (2 bases)</th></tr>`;
   for (const v of rows) h += `<tr><td>${v.title} <span class="muted">(${v.unit}, ${v.a})</span></td><td>${fmt(v.room)}</td><td>${fmt(v.sq)}</td><td>${ratio(v.sq / v.room)}</td><td>${d(v.dRoom, v.room, v.unit)}</td><td>${d(v.dSq, v.sq, v.unit)}</td></tr>`;
   document.getElementById("versusTable").innerHTML = h;
-  // Cards: small open, agenda join, parallel syncs, large-suite memory.
-  document.getElementById("versusCards").innerHTML = [0, 7, 10, 11].map(i => versusRow(currentVersus, VERSUS[i])).filter(Boolean)
+  // Cards: light = open, write all, reads, memory; large = open, agenda join, parallel syncs, memory.
+  document.getElementById("versusCards").innerHTML = (suite === "light" ? [0, 1, 3, 4] : [5, 7, 10, 11]).map(i => versusRow(currentVersus, VERSUS[i])).filter(Boolean)
     .map(v => {
       const max = Math.max(v.room, v.sq) * 1.15, bar = (x, c, l) => `<div style="display:flex;align-items:center;gap:10px;margin-top:8px"><span style="width:84px;font-size:12.5px;font-weight:600;color:${c}">${l}</span><div style="flex:1;background:var(--panel2);border-radius:6px;height:22px"><div style="width:${x / max * 100}%;height:100%;background:${c};border-radius:6px"></div></div><span style="width:70px;text-align:right;font-weight:600">${fmt(x)}</span></div>`;
       return `<div class="card"><h3>${v.title} <span class="muted" style="font-weight:400">(${v.unit}, ${v.a})</span></h3>${bar(v.room, "var(--accent)", "Room")}${bar(v.sq, "var(--s5c)", "SQLDelight")}
@@ -392,6 +404,14 @@ function renderVersus() {
     }).join("");
 }
 
+const SUITE_LABEL = { light: "Light · 2 000 lignes/table", large: "Gros volume · ~120 Mo" };
+function renderSuite() {
+  document.getElementById("suiteSeg").innerHTML = Object.keys(SUITE_LABEL).map(x => `<button class="eng ${x === suite ? "on" : ""}" data-s="${x}">${SUITE_LABEL[x]}</button>`).join("");
+  document.querySelectorAll("#suiteSeg button").forEach(b => b.onclick = () => { suite = b.dataset.s; history.replaceState(null, "", suite === "large" ? "#large" : location.pathname); renderSuite(); });
+  document.querySelectorAll(".suite").forEach(el => el.hidden = el.dataset.suite !== suite);
+  document.getElementById("versusNote").innerHTML = `Médianes. « SQLDelight / Room » &lt; 1 = SQLDelight plus rapide. Les colonnes Δ donnent le coût du découpage (${suite === "light" ? "S2 − S1" : "L2 − L1"}) pour chaque bibliothèque.`;
+  renderVersus();
+}
 function renderEngine() {
   document.getElementById("engineSeg").innerHTML = ENGINES.map(e => `<button class="eng ${e === engine ? "on" : ""}" data-e="${e}">${ENGINE_LABEL[e]}</button>`).join("");
   document.querySelectorAll("#engineSeg button").forEach(b => b.onclick = () => { setEngine(b.dataset.e); renderEngine(); });
@@ -400,7 +420,7 @@ function renderEngine() {
   if (LPLATFORMS.length) { renderLargeKpis(); renderLarge(); }
   renderKpis(); render();
 }
-renderInsight(); renderVersus(); renderEngine();
+renderInsight(); renderEngine(); renderSuite();
 </script>
 </body>
 </html>

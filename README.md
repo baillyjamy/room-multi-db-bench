@@ -148,7 +148,7 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 
 ## Résultats
 
-**Rapport visuel : [baillyjamy.github.io/room-multi-db-bench](https://baillyjamy.github.io/room-multi-db-bench/)** (`index.html`) (régénérer : `python3 scripts/report.py`).
+**Rapport visuel : [baillyjamy.github.io/room-multi-db-bench](https://baillyjamy.github.io/room-multi-db-bench/)** (`index.html`) : onglets **Light** (petit jeu de données) / **Gros volume** (~120 Mo) et **Room** / **SQLDelight** (régénérer : `python3 scripts/report.py`).
 
 Tableaux complets, Room et SQLDelight (médiane et Q1–Q3, écart par rapport à S1 / L1) : **[RESULTS.md](RESULTS.md)**. Données brutes, une ligne JSON par run : [`results/`](results/).
 
