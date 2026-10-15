@@ -145,8 +145,11 @@ python3 scripts/report.py
 
 ## Sources
 
-- **[Room – Save data in a local database](https://developer.android.com/training/data-storage/room) :** « *Each RoomDatabase instance is fairly expensive* ». Cette recommandation porte sur les **instances multiples d'une même base** (singleton), pas sur le nombre de bases.
-- **[SQLite – PRAGMA cache_size](https://www.sqlite.org/pragma.html#pragma_cache_size) :** le cache par défaut est de `-2000`, soit ~2 Mo **par connexion**. C'est un plafond, pas une allocation fixe.
-- **[SQLite – Write-Ahead Logging](https://www.sqlite.org/wal.html) :** un seul writer à la fois **par base**, et les lecteurs ne bloquent pas l'écriture.
-- **[Android – SQLite performance best practices](https://developer.android.com/topic/performance/sqlite-performance-best-practices) :** WAL, et chaque commit coûte un `fsync`.
-- **[RoomDatabase.Builder.setMultipleConnectionPool](https://developer.android.com/reference/kotlin/androidx/room/RoomDatabase.Builder#setMultipleConnectionPool(kotlin.Int,kotlin.Int)) :** taille du pool de connexions configurable.
+- **[Room – Save data in a local database](https://developer.android.com/training/data-storage/room) :** « *Each RoomDatabase instance is fairly expensive, and you rarely need access to multiple instances within a single process* ». Cette recommandation (singleton) porte sur les **instances multiples d'une même base**, pas sur le nombre de bases.
+- **[SQLite – PRAGMA cache_size](https://www.sqlite.org/pragma.html#pragma_cache_size) :** le cache par défaut est de `-2000`, soit ~2 Mo **par connexion** (un plafond, pas une allocation fixe). C'est ce qui explique le résultat de S5c : la mémoire suit le nombre de connexions.
+- **[SQLite – Write-Ahead Logging](https://www.sqlite.org/wal.html) :** un seul writer à la fois **par base**. C'est ce qui explique pourquoi les synchros parallèles sont plus rapides en L2.
+- **[Android – SQLite performance best practices](https://developer.android.com/topic/performance/sqlite-performance-best-practices) :**
+  - « *Push work to SQLite engine* » : explique le surcoût de la jointure agenda en mémoire en L2.
+  - En WAL, « *every commit issues an fsync* » : explique le coût d'une action qui écrit dans plusieurs bases.
+- **[SQLite – ATTACH DATABASE](https://www.sqlite.org/lang_attach.html) :** ajoute un autre fichier à la même connexion, ce qui permet un `JOIN` entre deux bases. C'est l'alternative si ce `JOIN` est indispensable. Attention : la page Android ci-dessus déconseille WAL avec `ATTACH`, et Room ne le gère pas nativement.
+- **[Apple – containerURL(forSecurityApplicationGroupIdentifier:)](https://developer.apple.com/documentation/foundation/filemanager/containerurl(forsecurityapplicationgroupidentifier:)) :** un App Group est un « *group's shared directory* », un dossier partagé entre les apps d'un même développeur, **pas un process dédié**.
