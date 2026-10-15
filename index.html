@@ -25,19 +25,20 @@
   .verdict { margin: 28px 0; padding: 22px 26px; border-radius: 16px; background: linear-gradient(135deg, rgba(61,220,151,.14), rgba(124,156,255,.10)); border: 1px solid rgba(61,220,151,.35); }
   .verdict b { color: var(--good); }
   .grid { display: grid; gap: 16px; }
-  .cards { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .cards { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
   .kpi { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
   .kpi small { font-size: 14px; color: var(--muted); font-weight: 500; }
-  .kpi-row { display: flex; gap: 18px; }
-  .kpi-row > div { flex: 1; }
-  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); }
+  .kpi-row { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  .kpi-row > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
+  .kpi-row .kpi { font-size: 24px; margin: 0; white-space: nowrap; text-align: right; }
+  .tag { display: inline-block; white-space: nowrap; flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); }
   .tag.android { color: var(--good); } .tag.ios, .tag.ios-app { color: var(--accent); }
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 16px 0; position: sticky; top: 0; z-index: 5; padding: 10px 0; background: var(--bg); }
-  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
   .seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 7px; color: var(--muted); font-weight: 600; font-size: 13px; }
   .seg button.on { background: var(--panel2); color: var(--text); }
-  .charts { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .charts { grid-template-columns: repeat(auto-fit, minmax(min(330px, 100%), 1fr)); }
   .chart svg { width: 100%; height: auto; display: block; margin-top: 8px; }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
