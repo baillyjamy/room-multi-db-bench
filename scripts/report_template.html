@@ -32,7 +32,7 @@
   .kpi-row { display: flex; gap: 18px; }
   .kpi-row > div { flex: 1; }
   .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); }
-  .tag.android { color: var(--good); } .tag.ios { color: var(--accent); }
+  .tag.android { color: var(--good); } .tag.ios, .tag.ios-app { color: var(--accent); }
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 16px 0; position: sticky; top: 0; z-index: 5; padding: 10px 0; background: var(--bg); }
   .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
   .seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 7px; color: var(--muted); font-weight: 600; font-size: 13px; }
@@ -53,6 +53,9 @@
   ul.clean { padding-left: 18px; margin: 8px 0; } ul.clean li { margin: 4px 0; }
   .scen { display: inline-block; width: 46px; font-weight: 700; }
   a { color: var(--accent); }
+  .badge { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); }
+  .badge.ok { color: var(--good); border-color: rgba(61,220,151,.35); } .badge.ko { color: var(--bad); border-color: rgba(255,107,122,.4); } .badge.wait { color: var(--muted); }
+  .kpi .rel { font-size: 13px; font-weight: 600; margin-left: 6px; }
   footer { margin-top: 64px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
 </style>
 </head>
@@ -81,6 +84,25 @@
     <div id="insightChart"></div>
   </div>
 
+  <section id="large">
+  <h2>Gros volume : une vraie app calendrier</h2>
+  <p class="lead">Jusqu'ici, les tables étaient petites. Ici on reproduit une vraie app calendrier avec une base d'environ 120 Mo : contacts, calendriers, événements et participants. <span class="scen" style="color:var(--s1);width:auto">L1</span> met tout dans <b>une seule base</b>. <span class="scen" style="color:var(--s2);width:auto">L2</span> sépare <b>deux bases</b> : contacts d'un côté, calendrier de l'autre. Sans clé étrangère entre les deux, l'agenda doit joindre les participants à leurs contacts <b>en mémoire</b>.</p>
+  <div id="largeEmpty" class="card muted">Données à venir : lancer la suite gros volume pour remplir <code>results/{android,ios-app,ios}-large.jsonl</code>.</div>
+  <div id="largeBody" hidden>
+    <p class="muted" id="largeDataset"></p>
+    <div class="grid cards" id="largeKpis"></div>
+    <div class="toolbar">
+      <div class="seg" id="largeSeg"></div>
+      <div class="legend" id="largeLegend"></div>
+      <span id="largeChecksum"></span>
+    </div>
+    <div class="grid charts" id="largeCharts"></div>
+    <h3 style="margin-top:28px">Tableau détaillé</h3>
+    <p class="muted">Médiane (Q1–Q3) ; la ligne Δ donne l'écart de la médiane par rapport à L1.</p>
+    <div class="card table-wrap"><table id="largeTable"></table></div>
+  </div>
+  </section>
+
   <h2>Tous les résultats</h2>
   <div class="toolbar">
     <div class="seg" id="platformSeg"></div>
@@ -102,10 +124,17 @@
         <li><span class="scen" style="color:var(--s10)">S10</span>10 bases × 1 table</li>
         <li><span class="scen" style="color:var(--s5c)">S5c</span>S5, 1 connexion par base</li>
       </ul></div>
+    <div class="card"><h3>Gros volume</h3>
+      <ul class="clean">
+        <li><span class="scen" style="color:var(--s1)">L1</span>1 base : contacts + calendriers + événements + participants</li>
+        <li><span class="scen" style="color:var(--s2)">L2</span>2 bases : contacts / calendrier</li>
+        <li>Base pré-remplie d'environ 120 Mo : 20 000 contacts, 205 000 événements sur 5 ans, ~513 000 participants (80 % sont des contacts), index <code>(calendarId, startMs)</code> et <code>email</code>. Données générées avec des graines fixes</li><li>Mesures : vues semaine/mois, agenda avec noms des contacts, recherche, synchros (rejouées à l'identique pour que la base ne grossisse pas)</li>
+        <li>Même checksum attendu pour L1 et L2 : les deux renvoient les mêmes données</li>
+      </ul></div>
     <div class="card"><h3>Stack</h3>
       <ul class="clean"><li>Kotlin 2.4.10, Room <b>3.0.2</b> (<code>androidx.room3</code>)</li><li><code>BundledSQLiteDriver</code> (sqlite-bundled 2.6.2)</li><li>WAL, pool par défaut : 1 writer + 4 readers par base</li><li>2 000 lignes par table, payload d'environ 210 octets</li></ul></div>
     <div class="card"><h3>Protocole</h3>
-      <ul class="clean"><li>1 <b>process neuf</b> par mesure</li><li>Android : APK release non debuggable, lancé avec <code>am start -S</code></li><li>iOS : exécutable K/N lancé avec <code>simctl spawn</code></li><li>20 runs par scénario, scénarios alternés, warm-up écarté</li><li>Médiane + IQR</li></ul></div>
+      <ul class="clean"><li>1 <b>process neuf</b> par mesure</li><li>Android : APK release non debuggable, lancé avec <code>am start -S</code></li><li>iOS (app) : vraie app SwiftUI (<code>iosApp/</code>) liant le framework Kotlin, relancée à chaque mesure avec <code>simctl launch --terminate-running-process</code></li><li>iOS (exécutable) : même code en exécutable K/N lancé avec <code>simctl spawn</code></li><li>20 runs par scénario, scénarios alternés, warm-up écarté</li><li>Médiane + IQR</li></ul></div>
     <div class="card"><h3>Environnement</h3>
       <ul class="clean"><li>Mac M3 Max, 36 Go, macOS 26.7</li><li>Émulateur Android 16 (API 36), arm64, 4 cœurs</li><li>Simulateur iPhone 17, iOS 26.5</li></ul></div>
   </div>
@@ -114,6 +143,7 @@
   <div class="card"><ul class="clean">
     <li>Les mesures tournent sur un émulateur et un simulateur sur Mac, pas sur de vrais appareils. Les valeurs absolues sont donc optimistes, mais la <b>comparaison entre scénarios</b> reste valable : même machine, même build, scénarios alternés.</li>
     <li>La mémoire « fin » est un <b>pire cas</b> : toutes les connexions sont ouvertes et tous les caches sont remplis par des scans complets.</li>
+    <li>Gros volume : les données sont <b>synthétiques</b>. La volumétrie est réaliste, mais la distribution (participants par événement, calendriers) peut différer de celle d'une vraie app.</li>
     <li>L'accès multi-process (App Group iOS) n'est pas mesuré.</li>
   </ul></div>
 
@@ -126,15 +156,18 @@
     <li><a href="https://developer.android.com/reference/kotlin/androidx/room/RoomDatabase.Builder#setMultipleConnectionPool(kotlin.Int,kotlin.Int)">RoomDatabase.Builder.setMultipleConnectionPool</a></li>
   </ul></div>
 
-  <footer>Données brutes : <code>results/*.jsonl</code> · Régénérer : <code>python3 scripts/report.py</code> · Code : <code>shared/src/commonMain/kotlin/bench/Bench.kt</code></footer>
+  <footer>Données brutes : <code>results/*.jsonl</code> · Régénérer : <code>python3 scripts/report.py</code> · Code : <code>shared/src/commonMain/kotlin/bench/Bench.kt</code>, <code>shared/src/commonMain/kotlin/bench/large/</code></footer>
 </div>
 
 <script>
 const DATA = /*__DATA__*/null;
 const SCEN = ["S1", "S2", "S5", "S10", "S5c"];
-const COLORS = { S1: "var(--s1)", S2: "var(--s2)", S5: "var(--s5)", S10: "var(--s10)", S5c: "var(--s5c)" };
+const LARGE = /*__LARGE__*/null || {};
+const LSCEN = ["L1", "L2"];
+const COLORS = { S1: "var(--s1)", S2: "var(--s2)", S5: "var(--s5)", S10: "var(--s10)", S5c: "var(--s5c)", L1: "var(--s1)", L2: "var(--s2)" };
 const PLATFORMS = Object.keys(DATA);
-const LABEL = { ios: "iOS", android: "Android" };
+const LABEL = { ios: "iOS (exécutable)", "ios-app": "iOS (app)", android: "Android" };
+const isIos = p => p.startsWith("ios");
 const METRICS = {
   common: [
     ["openMs", "Ouverture", "ms", "build() + 1re requête de chaque base"],
@@ -146,26 +179,38 @@ const METRICS = {
   ios: [["footprintOpenKb", "Mémoire après ouverture", "Mo", "phys_footprint"], ["footprintEndKb", "Mémoire en fin de run", "Mo", "phys_footprint, pire cas"]],
   android: [["pssOpenKb", "Mémoire après ouverture", "Mo", "PSS totale"], ["pssEndKb", "Mémoire en fin de run", "Mo", "PSS totale, pire cas"],
             ["nativeHeapEndKb", "Heap natif en fin de run", "Mo", "là où vit SQLite"]],
+  large: [
+    ["openMs", "Ouverture", "ms", "ouverture des bases existantes (~120 Mo) + 1re requête"],
+    ["weekQueryMs", "Vues « semaine »", "ms", "52 requêtes « semaine » (3 calendriers) événements + participants, sur index"],
+    ["monthQueryMs", "Vues « mois »", "ms", "12 requêtes « mois » sur les 10 calendriers"],
+    ["agendaJoinMs", "Agenda + noms des contacts", "ms", "12 mois d’agenda (tous calendriers) avec le nom du contact de chaque participant. L1 = un JOIN SQL ; L2 = requête calendrier + lookup contacts <code>WHERE email IN (…)</code> par paquets + jointure en mémoire. LE TEST CLÉ."],
+    ["searchContactsMs", "Recherche de contacts", "ms", "100 recherches de contacts par préfixe"],
+    ["syncContactsMs", "Synchro contacts", "ms", "synchro de 2 000 contacts (upsert, 1 transaction)"],
+    ["syncCalendarMs", "Synchro calendrier", "ms", "synchro de 5 000 événements + participants (1 transaction)"],
+    ["parallelSyncMs", "Synchros en parallèle", "ms", "les deux synchros lancées en même temps (L1 : un seul writer partagé ; L2 : un writer par base)"],
+  ],
 };
 
 const q = (arr, p) => { const s = [...arr].sort((a, b) => a - b); const i = (s.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
-function stats(platform, key) {
+function stats(rows, key, scen = SCEN) {
   const out = {};
-  for (const s of SCEN) {
-    let v = DATA[platform].filter(r => r.scenario === s && r[key] != null).map(r => r[key]);
+  for (const s of scen) {
+    let v = rows.filter(r => r.scenario === s && r[key] != null).map(r => r[key]);
     if (key.endsWith("Kb")) v = v.map(x => x / 1024);
     if (v.length) out[s] = { med: q(v, .5), q1: q(v, .25), q3: q(v, .75), n: v.length };
   }
   return out;
 }
-const metricsFor = p => [...METRICS.common, ...METRICS[p]];
+const metricsFor = p => [...METRICS.common, ...METRICS[isIos(p) ? "ios" : p]];
+const largeMetricsFor = p => [...METRICS.large, ...METRICS[isIos(p) ? "ios" : p]];
+const endMemKey = p => (isIos(p) ? "footprintEndKb" : "pssEndKb");
 const fmt = (x, d = 1) => x.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const sign = x => (x > 0 ? "+" : x < 0 ? "−" : "±") + fmt(Math.abs(x));
 
 function barChart(st, unit, { highlight = [], height = 210 } = {}) {
   const W = 360, H = height, padL = 44, padB = 26, padT = 18;
   const max = Math.max(...Object.values(st).map(s => s.q3)) * 1.12 || 1;
-  const keys = SCEN.filter(s => st[s]);
+  const keys = Object.keys(st).filter(s => st[s]);
   const bw = (W - padL - 10) / keys.length;
   const y = v => padT + (H - padT - padB) * (1 - v / max);
   let g = "";
@@ -187,11 +232,11 @@ function barChart(st, unit, { highlight = [], height = 210 } = {}) {
 
 function renderKpis() {
   const row = (key, unit) => PLATFORMS.map(p => {
-    const st = stats(p, key); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> ${unit}</small></div></div>`;
+    const st = stats(DATA[p], key); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> ${unit}</small></div></div>`;
   }).join("");
-  const memKey = p => (p === "ios" ? "footprintOpenKb" : "pssOpenKb");
-  const memRow = PLATFORMS.map(p => { const st = stats(p, memKey(p)); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> Mo</small></div></div>`; }).join("");
-  const perAction = PLATFORMS.map(p => { const st = stats(p, "writeAllMs"); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign((st.S2.med - st.S1.med) / 200)}<small> ms</small></div></div>`; }).join("");
+  const memKey = p => (isIos(p) ? "footprintOpenKb" : "pssOpenKb");
+  const memRow = PLATFORMS.map(p => { const st = stats(DATA[p], memKey(p)); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> Mo</small></div></div>`; }).join("");
+  const perAction = PLATFORMS.map(p => { const st = stats(DATA[p], "writeAllMs"); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign((st.S2.med - st.S1.med) / 200)}<small> ms</small></div></div>`; }).join("");
   document.getElementById("kpis").innerHTML = `
     <div class="card"><div class="muted">Ouverture, 2 bases vs 1</div><div class="kpi-row">${row("openMs", "ms")}</div></div>
     <div class="card"><div class="muted">Mémoire après ouverture, 2 bases vs 1</div><div class="kpi-row">${memRow}</div></div>
@@ -200,34 +245,83 @@ function renderKpis() {
 
 function renderInsight() {
   const p = PLATFORMS.includes("android") ? "android" : PLATFORMS[0];
-  const key = p === "ios" ? "footprintEndKb" : "pssEndKb";
-  const st = stats(p, key);
+  const st = stats(DATA[p], endMemKey(p));
   document.getElementById("insightChart").innerHTML =
     `<div class="muted" style="font-size:13px">${LABEL[p]} · mémoire en fin de run (Mo, delta) — S1 vs S5 vs S5c</div>` +
     barChart({ S1: st.S1, S5: st.S5, S5c: st.S5c }, "Mo", { height: 230 }) +
     `<div class="muted" style="font-size:13px">S5 : <b style="color:var(--s5)">${sign(st.S5.med - st.S1.med)} Mo</b> · S5c : <b style="color:var(--s5c)">${sign(st.S5c.med - st.S1.med)} Mo</b></div>`;
 }
 
-let current = PLATFORMS.includes("android") ? "android" : PLATFORMS[0];
-function render() {
-  document.getElementById("platformSeg").innerHTML = PLATFORMS.map(p => `<button class="${p === current ? "on" : ""}" data-p="${p}">${LABEL[p]} · ${DATA[p][0].platform}</button>`).join("");
-  document.querySelectorAll("#platformSeg button").forEach(b => b.onclick = () => { current = b.dataset.p; render(); });
-  document.getElementById("legend").innerHTML = SCEN.map(s => `<span><i style="background:${COLORS[s]}"></i>${s}</span>`).join("") + `<span class="muted">· barre = médiane, trait = Q1–Q3</span>`;
-  const ms = metricsFor(current);
-  document.getElementById("charts").innerHTML = ms.map(([k, t, u, d]) =>
-    `<div class="card chart"><h3>${t} <span class="muted" style="font-weight:400">(${u})</span></h3><div class="muted" style="font-size:12.5px">${d}</div>${barChart(stats(current, k), u)}</div>`).join("");
-  let h = `<tr><th>Métrique</th>${SCEN.map(s => `<th style="color:${COLORS[s]}">${s}</th>`).join("")}</tr>`;
+const chartsHtml = (rows, ms, scen) => ms.map(([k, t, u, d]) =>
+  `<div class="card chart"><h3>${t} <span class="muted" style="font-weight:400">(${u})</span></h3><div class="muted" style="font-size:12.5px">${d}</div>${barChart(stats(rows, k, scen), u)}</div>`).join("");
+const legendHtml = scen => scen.map(s => `<span><i style="background:${COLORS[s]}"></i>${s}</span>`).join("") + `<span class="muted">· barre = médiane, trait = Q1–Q3</span>`;
+const relTxt = rel => `${rel >= 0 ? "+" : "−"}${Math.round(Math.abs(rel) * 100)} %`;
+function tableHtml(rows, ms, scen) {
+  const base = scen[0];
+  let h = `<tr><th>Métrique</th>${scen.map(s => `<th style="color:${COLORS[s]}">${s}</th>`).join("")}</tr>`;
   for (const [k, t, u] of ms) {
-    const st = stats(current, k);
-    h += `<tr><td>${t} <span class="muted">(${u})</span></td>${SCEN.map(s => st[s] ? `<td>${fmt(st[s].med)}<span class="iqr">${fmt(st[s].q1)}–${fmt(st[s].q3)}</span></td>` : "<td>–</td>").join("")}</tr>`;
-    h += `<tr><td class="muted" style="padding-left:22px">Δ vs S1</td>${SCEN.map(s => {
-      if (!st[s] || s === "S1") return `<td class="muted">—</td>`;
-      const d = st[s].med - st.S1.med, rel = d / st.S1.med;
+    const st = stats(rows, k, scen);
+    h += `<tr><td>${t} <span class="muted">(${u})</span></td>${scen.map(s => st[s] ? `<td>${fmt(st[s].med)}<span class="iqr">${fmt(st[s].q1)}–${fmt(st[s].q3)}</span></td>` : "<td>–</td>").join("")}</tr>`;
+    h += `<tr><td class="muted" style="padding-left:22px">Δ vs ${base}</td>${scen.map(s => {
+      if (!st[s] || !st[base] || s === base) return `<td class="muted">—</td>`;
+      const d = st[s].med - st[base].med, rel = d / st[base].med;
       const cls = d <= 0 ? "neg" : rel > 1 ? "big" : "pos";
-      return `<td class="delta ${cls}">${sign(d)} <span class="iqr">${rel >= 0 ? "+" : "−"}${Math.round(Math.abs(rel) * 100)} %</span></td>`;
+      return `<td class="delta ${cls}">${sign(d)} <span class="iqr">${relTxt(rel)}</span></td>`;
     }).join("")}</tr>`;
   }
-  document.getElementById("table").innerHTML = h;
+  return h;
+}
+function segHtml(platforms, cur, label) {
+  return platforms.map(p => `<button class="${p === cur ? "on" : ""}" data-p="${p}">${LABEL[p]} · ${label(p)}</button>`).join("");
+}
+
+let current = PLATFORMS.includes("android") ? "android" : PLATFORMS[0];
+function render() {
+  document.getElementById("platformSeg").innerHTML = segHtml(PLATFORMS, current, p => DATA[p][0].platform);
+  document.querySelectorAll("#platformSeg button").forEach(b => b.onclick = () => { current = b.dataset.p; render(); });
+  document.getElementById("legend").innerHTML = legendHtml(SCEN);
+  const ms = metricsFor(current);
+  document.getElementById("charts").innerHTML = chartsHtml(DATA[current], ms, SCEN);
+  document.getElementById("table").innerHTML = tableHtml(DATA[current], ms, SCEN);
+}
+
+const LPLATFORMS = ["android", "ios-app", "ios"].filter(p => LARGE[p] && LARGE[p].runs.length);
+let currentLarge = LPLATFORMS[0];
+function checksumBadge(p) {
+  const runs = LARGE[p].runs.filter(r => LSCEN.includes(r.scenario) && r.checksum != null);
+  const scen = new Set(runs.map(r => r.scenario)), sums = new Set(runs.map(r => String(r.checksum)));
+  if (scen.size < 2) return `<span class="badge wait">… checksum : L1 et L2 nécessaires</span>`;
+  return sums.size === 1 ? `<span class="badge ok">✓ résultats identiques (checksum)</span>` : `<span class="badge ko">✗ checksums différents</span>`;
+}
+function renderLargeKpis() {
+  const card = (title, key) => `<div class="card"><div class="muted">${title}, L2 vs L1</div><div class="kpi-row">${LPLATFORMS.map(p => {
+    const k = typeof key === "function" ? key(p) : key, unit = k.endsWith("Kb") ? "Mo" : "ms", st = stats(LARGE[p].runs, k, LSCEN);
+    if (!st.L1 || !st.L2) return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi muted">–</div></div>`;
+    const d = st.L2.med - st.L1.med, rel = d / st.L1.med, cls = d <= 0 ? "neg" : rel > 1 ? "big" : "pos";
+    return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(d)}<small> ${unit}</small><span class="rel delta ${cls}">${relTxt(rel)}</span></div></div>`;
+  }).join("")}</div></div>`;
+  document.getElementById("largeKpis").innerHTML =
+    card("Ouverture", "openMs") + card("Agenda + noms des contacts", "agendaJoinMs") +
+    card("Synchros en parallèle", "parallelSyncMs") + card("Mémoire en fin de run", endMemKey);
+}
+function renderLarge() {
+  const L = LARGE[currentLarge];
+  const seed = L.seeds.find(r => r.scenario === "L1") || L.seeds[0];
+  document.getElementById("largeDataset").innerHTML = seed
+    ? `Jeu de données (${LABEL[currentLarge]}) : <b>${seed.contacts.toLocaleString("fr-FR")}</b> contacts, <b>${seed.events.toLocaleString("fr-FR")}</b> événements, <b>${seed.attendees.toLocaleString("fr-FR")}</b> participants, soit <b>${fmt(seed.dbSizeMb)} Mo</b> sur disque. Génération : ${fmt(seed.seedMs / 1000)} s (une seule fois, hors mesures).`
+    : `Jeu de données (${LABEL[currentLarge]}) : infos de génération indisponibles.`;
+  document.getElementById("largeSeg").innerHTML = segHtml(LPLATFORMS, currentLarge, p => LARGE[p].runs[0].platform);
+  document.querySelectorAll("#largeSeg button").forEach(b => b.onclick = () => { currentLarge = b.dataset.p; renderLarge(); });
+  document.getElementById("largeLegend").innerHTML = legendHtml(LSCEN);
+  document.getElementById("largeChecksum").innerHTML = checksumBadge(currentLarge);
+  const ms = largeMetricsFor(currentLarge);
+  document.getElementById("largeCharts").innerHTML = chartsHtml(L.runs, ms, LSCEN);
+  document.getElementById("largeTable").innerHTML = tableHtml(L.runs, ms, LSCEN);
+}
+if (LPLATFORMS.length) {
+  document.getElementById("largeEmpty").hidden = true;
+  document.getElementById("largeBody").hidden = false;
+  renderLargeKpis(); renderLarge();
 }
 renderKpis(); renderInsight(); render();
 </script>

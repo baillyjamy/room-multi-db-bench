@@ -18,6 +18,11 @@ kotlin {
         binaries.executable {
             entryPoint = "bench.main"
         }
+        // Static framework linked by the SwiftUI app in iosApp/.
+        binaries.framework {
+            baseName = "Shared"
+            isStatic = true
+        }
     }
 
     sourceSets {

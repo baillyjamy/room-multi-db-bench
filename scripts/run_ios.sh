@@ -5,15 +5,16 @@ set -euo pipefail
 RUNS=${RUNS:-15}
 SCENARIOS=${SCENARIOS:-"S1 S2 S5 S10 S5c"}
 DEVICE=${DEVICE:-booted}
-OUT=results/ios.jsonl
+PREFIX=${PREFIX:-} # "large-" for the large-volume suite
+OUT=${OUT:-results/ios${PREFIX:+-large}.jsonl}
 cd "$(dirname "$0")/.."
 mkdir -p results && touch "$OUT"; [[ -n "${KEEP:-}" ]] || : > "$OUT"
 BIN=$(ls shared/build/bin/iosSimulatorArm64/releaseExecutable/*.kexe)
 
 launch() { xcrun simctl spawn "$DEVICE" "$BIN" "$1" "$2" | sed -n 's/^ROOMBENCH //p' | tee -a "$OUT"; }
 
-for s in $SCENARIOS; do launch seed "$s"; done
-OUT=/dev/null launch run S1 >/dev/null # warm-up, discarded
+for s in $SCENARIOS; do launch "${PREFIX}seed" "$s"; done
+OUT=/dev/null launch "${PREFIX}run" "${SCENARIOS%% *}" >/dev/null # warm-up, discarded
 for i in $(seq 1 "$RUNS"); do
-  for s in $SCENARIOS; do launch run "$s"; done
+  for s in $SCENARIOS; do launch "${PREFIX}run" "$s"; done
 done

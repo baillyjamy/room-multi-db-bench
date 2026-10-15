@@ -6,14 +6,25 @@
 
 Pour **2 bases** (le cas contacts + calendrier), par rapport à une base unique :
 
-| | Android (émulateur API 36) | iOS (simulateur 26.5) |
-|---|---:|---:|
-| Ouverture (build + 1re requête) | **+4,9 ms** | **+2,6 ms** |
-| Mémoire après ouverture | **+0,9 Mo** (PSS) | **+1,1 Mo** (phys_footprint) |
-| Mémoire pire cas (toutes les connexions ouvertes, caches pleins) | +8,1 Mo | +8,9 Mo |
-| Écriture sur 1 table | ≈ (pas plus lent) | ≈ |
-| Lectures concurrentes | ≈ / plus rapide | ≈ |
-| Action qui écrit **dans les 2 bases** | +0,8 ms par action | +0,07 ms par action |
+| | Android (émulateur API 36) | iOS app SwiftUI (simulateur 26.5) | iOS exécutable K/N |
+|---|---:|---:|---:|
+| Ouverture (build + 1re requête) | **+4,9 ms** | **+1,7 ms** | **+2,6 ms** |
+| Mémoire après ouverture | **+0,9 Mo** (PSS) | **+1,0 Mo** (phys_footprint) | **+1,1 Mo** |
+| Mémoire pire cas (toutes les connexions ouvertes, caches pleins) | +8,1 Mo | +9,0 Mo | +8,9 Mo |
+| Écriture sur 1 table | ≈ (pas plus lent) | ≈ | ≈ |
+| Lectures concurrentes | ≈ / plus rapide | ≈ / plus rapide | ≈ |
+| Action qui écrit **dans les 2 bases** | +0,8 ms par action | +0,07 ms par action | +0,07 ms par action |
+
+**Gros volume** (vraie volumétrie de calendrier, ~120 Mo : 20 000 contacts, 205 000 événements, ~513 000 participants). Comparaison L2 (contacts + calendrier) vs L1 (une base), médianes sur 20 runs. Les checksums sont identiques : les deux renvoient exactement les mêmes données.
+
+| | Android | iOS app | iOS exécutable |
+|---|---:|---:|---:|
+| Ouverture | +7 ms | ≈ (−2 ms) | +3 ms |
+| Vues semaine / mois, recherche de contacts | ≈ | ≈ | ≈ |
+| **Agenda 12 mois + nom du contact de chaque participant** (JOIN SQL vs jointure en mémoire) | **+118 ms (+36 %)**, soit ~10 ms par mois affiché | **+57 ms (+19 %)**, ~5 ms par mois | **+83 ms (+31 %)**, ~7 ms par mois |
+| Synchros contacts / calendrier seules | ≈ | ≈ | ≈ |
+| **Les deux synchros en parallèle** | **−17 ms (−10 %)** | **−29 ms (−10 %)** | **−22 ms (−8 %)** |
+| Mémoire pire cas | +5,8 Mo | +7,8 Mo | +7,5 Mo |
 
 Conclusions factuelles :
 
@@ -23,6 +34,12 @@ Conclusions factuelles :
 4. **Écrire ou lire dans une seule base n'est pas plus lent**, et c'est souvent un peu plus rapide (base plus petite, verrou d'écriture non partagé).
 
 Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement, mais ils restent modérés (voir les tableaux complets).
+
+**Gros volume :** les volumes réalistes ne changent pas ces conclusions.
+
+- **Le vrai coût de 2 bases est fonctionnel :** on perd le `JOIN` SQL entre contacts et événements. L'agenda doit faire une 2e requête et une jointure en mémoire, ce qui coûte +19 à +36 % sur cette requête, soit 5 à 10 ms par mois affiché.
+- **En contrepartie,** des synchros contacts et calendrier simultanées ne se bloquent plus mutuellement (−8 à −10 %).
+- **Le reste est identique**, que ce soit dans une vraie app iOS ou en exécutable.
 
 ## Méthodologie
 
@@ -44,7 +61,8 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 - **Préparation :** chaque scénario est rempli une fois avec 2 000 lignes par table (~5 Mo de données). Les mesures portent ensuite sur l'**ouverture de fichiers existants**, comme au démarrage réel d'une app.
 - **Un process neuf par mesure :**
   - **Android :** APK **release** non debuggable, lancé avec `am start -S`.
-  - **iOS :** exécutable Kotlin/Native lancé dans le simulateur avec `xcrun simctl spawn`.
+  - **iOS (app) :** vraie app SwiftUI ([`iosApp/`](iosApp/)) qui lie le framework Kotlin `Shared`, relancée à chaque mesure avec `xcrun simctl launch --terminate-running-process`. Les données sont dans le sandbox de l'app (`Application Support`).
+  - **iOS (exécutable) :** le même code en exécutable Kotlin/Native lancé avec `xcrun simctl spawn`. C'est la première version du protocole, conservée pour comparaison.
 - **Répétitions :** 20 runs par scénario, avec les scénarios **alternés** (S1, S2, S5, S10, S5c, S1…) pour répartir le bruit. Un warm-up non compté au début.
 - **Statistiques :** médiane et écart interquartile (Q1–Q3).
 
@@ -58,6 +76,27 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 | `writeOneMs` | 200 transactions sur la seule table `t0`. Le travail est identique dans tous les scénarios |
 | `readMs` | 8 coroutines concurrentes lisent les 200 dernières lignes de chaque table (×10), puis font un scan complet. Toutes les connexions s'ouvrent et les caches se remplissent |
 | `*OpenKb` / `*EndKb` | Augmentation de la mémoire par rapport au début du process, après un GC, mesurée **après l'ouverture** puis **en fin de run** |
+
+**Suite « gros volume »** (`shared/src/commonMain/kotlin/bench/large/`) : une vraie volumétrie de calendrier.
+
+- **Données** (graines fixes, identiques dans les deux scénarios) :
+  - 20 000 contacts ;
+  - 10 calendriers avec 200 000 événements sur 5 ans, plus un calendrier « synchro » de 5 000 événements ;
+  - environ 513 000 participants, dont 80 % sont des contacts ;
+  - au total, environ 120 Mo.
+- **Index :** `events(calendarId, startMs)`, `attendees(eventId)`, `attendees(email)`, `contacts(email)`, `contacts(name)`.
+- **Scénarios :** **L1** = 1 base. **L2** = 2 bases (contacts / calendrier).
+
+| Métrique | Contenu |
+|---|---|
+| `openMs` | Ouverture des bases existantes + premières requêtes |
+| `weekQueryMs` | 52 vues « semaine » sur 3 calendriers (événements + participants) |
+| `monthQueryMs` | 12 vues « mois » sur les 10 calendriers |
+| `agendaJoinMs` | 12 mois d'agenda avec le nom du contact de chaque participant. **L1 :** un `JOIN` SQL. **L2 :** une requête calendrier, puis `WHERE email IN (…)` par paquets de 900 dans la base contacts, puis une jointure en mémoire |
+| `searchContactsMs` | 100 recherches de contacts par préfixe |
+| `syncContactsMs` / `syncCalendarMs` | Upsert de 2 000 contacts / remplacement des 5 000 événements du calendrier « synchro » (1 transaction chacun, rejoués à l'identique pour que la base ne grossisse pas) |
+| `parallelSyncMs` | Les deux synchros en même temps. **L1 :** un seul writer partagé. **L2 :** un writer par base |
+| `checksum` | Empreinte de tous les résultats lus. Elle doit être **identique** pour L1 et L2 |
 
 **Mémoire relevée :**
 - **Android :** `Debug.MemoryInfo.totalPss`, `Debug.getNativeHeapAllocatedSize()` (où vit SQLite) et le heap Java.
@@ -77,7 +116,7 @@ Tableaux complets (médiane et Q1–Q3, écart par rapport à S1) : **[RESULTS.m
 ## Limites
 
 - **Pas de vrais appareils :** les mesures tournent sur un émulateur et un simulateur sur un Mac M3 Max. Les valeurs absolues sont donc optimistes, surtout pour les I/O. La **comparaison entre scénarios** reste valable, car tous tournent sur la même machine, avec le même build et en alternance.
-- **Pas d'app iOS empaquetée :** le benchmark iOS tourne comme un exécutable Kotlin/Native dans le simulateur. Le runtime, le code Room et SQLite sont les mêmes que dans un framework KMP, mais il n'y a pas de bundle UIKit.
+- **Gros volume synthétique :** la volumétrie est réaliste, mais la distribution des données peut différer de celle d'une vraie app.
 - **Pire cas mémoire :** `*EndKb` force l'ouverture de toutes les connexions et le remplissage de tous les caches. Dans une vraie app, les readers ne s'ouvrent qu'en cas d'accès concurrents.
 - **Partage entre apps non testé :** l'accès multi-process (App Group iOS) n'est pas mesuré.
 
@@ -88,9 +127,20 @@ Prérequis : JDK 17+, Android SDK, Xcode, un émulateur ou appareil Android (`ad
 ```bash
 python3 scripts/generate.py   # génère les entités, DAO et bases (déjà fait)
 ./gradlew :androidApp:assembleRelease :shared:linkReleaseExecutableIosSimulatorArm64
+# App iOS (le projet est généré par Tuist depuis iosApp/Project.swift ; la phase de build lance Gradle pour le framework)
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Release \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/ios-app build
+
+# Suite de base (S1…S10, S5c)
+RUNS=20 ./scripts/run_ios_app.sh
 RUNS=20 ./scripts/run_ios.sh
 RUNS=20 ./scripts/run_android.sh   # ANDROID_SERIAL=... pour choisir l'appareil
-python3 scripts/analyze.py results/ios.jsonl results/android.jsonl > RESULTS.md
+# Suite gros volume (L1, L2) -> results/*-large.jsonl
+export PREFIX=large- SCENARIOS="L1 L2"
+RUNS=20 ./scripts/run_ios_app.sh && RUNS=20 ./scripts/run_ios.sh && RUNS=20 POLLS=600 ./scripts/run_android.sh
+
+python3 scripts/analyze.py results/{android,ios-app,ios}.jsonl results/{android,ios-app,ios}-large.jsonl > RESULTS.md
+python3 scripts/report.py
 ```
 
 ## Sources

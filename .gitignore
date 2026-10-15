@@ -3,3 +3,5 @@ build/
 .kotlin/
 local.properties
 */build/
+xcuserdata/
+iosApp/iosApp.xcworkspace/
