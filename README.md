@@ -88,6 +88,24 @@ Au-delà de 2 bases (5 ou 10), les coûts augmentent à peu près linéairement,
 - **Exception Android :** chaque base supplémentaire coûte environ **30 ms à l'ouverture** avec `AndroidSqliteDriver` (SQLite du système, via le framework), contre 5 ms avec Room (`BundledSQLiteDriver`).
 - **En absolu, aucune bibliothèque ne gagne partout :** SQLDelight écrit plus vite en natif et sur Android ; Room lit plus vite en concurrence (pool de 4 readers) et sur JVM.
 
+## Conclusion
+
+**« Room n'aime pas plusieurs bases » n'est pas confirmé par les mesures.** Sur 4 plateformes, 2 bibliothèques (Room, SQLDelight) et 2 volumes (~12 Mo et ~120 Mo), séparer contacts et calendrier en 2 bases ne pose aucun problème de performance bloquant. Le choix doit se faire sur des critères fonctionnels.
+
+- **Ce que coûte une 2e base :**
+  - quelques ms à l'ouverture (jusqu'à ~30 ms avec SQLDelight sur Android) ;
+  - ~1 Mo de mémoire, et en pire cas un coût qui dépend du nombre de connexions (réglable) ;
+  - la perte du `JOIN` et des clés étrangères entre contacts et calendrier : l'agenda avec les noms des contacts est plus lent de +19 à +56 % en gros volume et de +48 à +91 % en light, soit 1 à 16 ms par mois affiché ;
+  - pas de transaction atomique entre les deux bases.
+- **Ce qu'elle apporte :**
+  - des synchros contacts et calendrier parallèles sans blocage (−6 à −10 % en gros volume, −15 à −30 % en light) ;
+  - une base contacts autonome, qu'on peut partager, vider ou migrer indépendamment.
+- **Recommandation :**
+  - 2 bases sont viables avec Room comme avec SQLDelight ;
+  - limiter le pool de connexions si la mémoire compte ;
+  - faire le lookup des contacts par paquets (`IN (…)`) ou garder un cache des noms pour l'agenda ;
+  - une base unique n'est préférable que si l'app a besoin de `JOIN` massifs ou d'écritures atomiques entre les deux domaines.
+
 ## Méthodologie
 
 **Principe :** même schéma, mêmes données et même charge de travail. Seul le découpage en fichiers change.

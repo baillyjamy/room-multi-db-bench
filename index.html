@@ -26,6 +26,10 @@
   .verdict b { color: var(--good); }
   .grid { display: grid; gap: 16px; }
   .cards { grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+  .conclusion { grid-template-columns: 1fr; margin-top: 18px; }
+  .conclusion .card { padding: 20px 26px; }
+  .conclusion ul.clean li { margin: 8px 0; font-size: 15.5px; line-height: 1.55; }
+  #conclusion p.lead { max-width: none; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
   .kpi { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
   .kpi small { font-size: 14px; color: var(--muted); font-weight: 500; }
@@ -141,6 +145,33 @@
   <h3 style="margin-top:28px">Tableau détaillé</h3>
   <p class="muted" id="versusNote">Médianes. « SQLDelight / Room » &lt; 1 = SQLDelight plus rapide. Les colonnes Δ donnent le coût du découpage (S2 − S1, L2 − L1) pour chaque bibliothèque.</p>
   <div class="card table-wrap"><table id="versusTable"></table></div>
+  </section>
+
+  <section id="conclusion">
+  <h2>Conclusion</h2>
+  <p class="lead"><b>« Room n'aime pas plusieurs bases » n'est pas confirmé par les mesures.</b> Sur 4 plateformes, 2 bibliothèques et 2 volumes de données, séparer contacts et calendrier en 2 bases ne pose aucun problème de performance bloquant. Le choix doit se faire sur des critères fonctionnels, pas sur la perf.</p>
+  <div class="grid conclusion">
+    <div class="card"><h3>Ce que coûte une 2e base</h3>
+      <ul class="clean">
+        <li><b>Ouverture :</b> quelques ms (jusqu'à ~30 ms avec SQLDelight sur Android)</li>
+        <li><b>Mémoire :</b> ~1 Mo après ouverture ; en pire cas, ça dépend du <b>nombre de connexions</b>, réglable avec la taille du pool</li>
+        <li><b>Plus de <code>JOIN</code> ni de clé étrangère</b> entre contacts et calendrier : l'agenda avec les noms des contacts est plus lent de +19 à +56 % en gros volume et de +48 à +91 % en light. En absolu, ça fait 1 à 16 ms par mois affiché.</li>
+        <li><b>Pas de transaction atomique</b> qui couvre les deux bases</li>
+      </ul></div>
+    <div class="card"><h3>Ce qu'elle apporte</h3>
+      <ul class="clean">
+        <li><b>Synchros contacts et calendrier en parallèle</b> sans se bloquer : −6 à −10 % en gros volume, −15 à −30 % en light</li>
+        <li>Lectures et écritures dans une seule base : pas plus lentes</li>
+        <li>Une base contacts <b>autonome</b>, qu'on peut partager, vider ou migrer indépendamment du calendrier</li>
+      </ul></div>
+    <div class="card"><h3>Recommandation</h3>
+      <ul class="clean">
+        <li><b>2 bases (contacts + calendrier) :</b> aucun obstacle de perf, que ce soit avec Room ou SQLDelight</li>
+        <li>Limiter le pool de connexions si la mémoire compte (<code>setMultipleConnectionPool</code> / <code>setSingleConnectionPool</code>)</li>
+        <li>Pour l'agenda, faire le lookup des contacts par paquets (<code>WHERE email IN (…)</code>) ou garder un cache des noms</li>
+        <li>Une base unique reste préférable seulement si on a besoin de <code>JOIN</code> massifs ou d'écritures atomiques entre contacts et calendrier</li>
+      </ul></div>
+  </div>
   </section>
 
   <h2>Méthodologie</h2>
