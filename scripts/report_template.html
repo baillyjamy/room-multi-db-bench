@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room KMP — Coût de plusieurs bases de données</title>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #131824; --panel2: #1a2030; --text: #e6e9f0; --muted: #8b93a7; --line: #262d3d;
+    --accent: #7c9cff; --good: #3ddc97; --warn: #ffb547; --bad: #ff6b7a;
+    --s1: #7c9cff; --s2: #3ddc97; --s5: #ffb547; --s10: #ff6b7a; --s5c: #c792ea;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 48px 24px 96px; }
+  header { padding: 32px 0 8px; }
+  .eyebrow { color: var(--accent); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; font-size: 12px; }
+  h1 { font-size: 40px; line-height: 1.15; margin: 8px 0 12px; letter-spacing: -0.02em; }
+  h1 em { font-style: normal; background: linear-gradient(90deg, var(--accent), var(--s5c)); -webkit-background-clip: text; color: transparent; }
+  h2 { font-size: 24px; margin: 56px 0 8px; letter-spacing: -0.01em; }
+  h3 { font-size: 16px; margin: 0 0 4px; }
+  p.lead { color: var(--muted); font-size: 17px; max-width: 760px; }
+  .muted { color: var(--muted); }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--panel2); padding: 1px 6px; border-radius: 5px; }
+  .verdict { margin: 28px 0; padding: 22px 26px; border-radius: 16px; background: linear-gradient(135deg, rgba(61,220,151,.14), rgba(124,156,255,.10)); border: 1px solid rgba(61,220,151,.35); }
+  .verdict b { color: var(--good); }
+  .grid { display: grid; gap: 16px; }
+  .cards { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .kpi { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 6px 0 2px; }
+  .kpi small { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .kpi-row { display: flex; gap: 18px; }
+  .kpi-row > div { flex: 1; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); }
+  .tag.android { color: var(--good); } .tag.ios { color: var(--accent); }
+  .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 16px 0; position: sticky; top: 0; z-index: 5; padding: 10px 0; background: var(--bg); }
+  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 7px; color: var(--muted); font-weight: 600; font-size: 13px; }
+  .seg button.on { background: var(--panel2); color: var(--text); }
+  .charts { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  .chart svg { width: 100%; height: auto; display: block; margin-top: 8px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { padding: 9px 10px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td .iqr { color: var(--muted); font-size: 11.5px; margin-left: 4px; }
+  .delta.pos { color: var(--warn); } .delta.neg { color: var(--good); } .delta.big { color: var(--bad); }
+  .table-wrap { overflow-x: auto; }
+  .insight { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: center; }
+  @media (max-width: 820px) { .insight { grid-template-columns: 1fr; } h1 { font-size: 30px; } }
+  ul.clean { padding-left: 18px; margin: 8px 0; } ul.clean li { margin: 4px 0; }
+  .scen { display: inline-block; width: 46px; font-weight: 700; }
+  a { color: var(--accent); }
+  footer { margin-top: 64px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Benchmark · Room 3 KMP · Android &amp; iOS</div>
+    <h1>Plusieurs bases Room, <em>est-ce que ça coûte cher&nbsp;?</em></h1>
+    <p class="lead">On répartit le même schéma de 10 tables, avec les mêmes données et la même charge de travail, sur 1, 2, 5 ou 10 bases SQLite. On mesure ensuite le temps d'ouverture, les écritures, les lectures et la mémoire. Chaque mesure tourne dans un process neuf, 20 fois par scénario.</p>
+  </header>
+
+  <div class="verdict">
+    <b>Verdict :</b> avec <b>2 bases</b> (contacts + calendrier), le surcoût est de <b>quelques millisecondes à l'ouverture</b> et d'environ <b>1 Mo de mémoire</b>.
+    Le surcoût mémoire en pire cas vient du <b>nombre de connexions</b> (1 writer + 4 readers par base), pas du nombre de bases, et il se règle avec la taille du pool.
+  </div>
+
+  <div class="grid cards" id="kpis"></div>
+
+  <h2>L'insight clé : connexions ≠ bases</h2>
+  <div class="card insight">
+    <div>
+      <p>Room ouvre jusqu'à <b>1 writer + 4 readers par base</b>, et SQLite garde un cache de pages (~2 Mo max) <b>par connexion</b>. Le scénario de contrôle <span class="tag" style="color:var(--s5c)">S5c</span> utilise <b>5 bases</b> avec une seule connexion chacune, soit <b>5 connexions au total, comme S1</b>.</p>
+      <p>Résultat : le surcoût mémoire de S5 <b>disparaît presque entièrement</b>. Ce coût vient donc des connexions, pas du découpage en fichiers.</p>
+      <p class="muted">Réglage : <code>setMultipleConnectionPool(maxReaders, maxWriters)</code> ou <code>setSingleConnectionPool()</code>.</p>
+    </div>
+    <div id="insightChart"></div>
+  </div>
+
+  <h2>Tous les résultats</h2>
+  <div class="toolbar">
+    <div class="seg" id="platformSeg"></div>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div class="grid charts" id="charts"></div>
+
+  <h2>Tableau détaillé</h2>
+  <p class="muted">Médiane (Q1–Q3) ; la ligne Δ donne l'écart de la médiane par rapport à S1.</p>
+  <div class="card table-wrap"><table id="table"></table></div>
+
+  <h2>Méthodologie</h2>
+  <div class="grid cards">
+    <div class="card"><h3>Scénarios</h3>
+      <ul class="clean">
+        <li><span class="scen" style="color:var(--s1)">S1</span>1 base, 10 tables</li>
+        <li><span class="scen" style="color:var(--s2)">S2</span>contacts (2) + calendrier (8)</li>
+        <li><span class="scen" style="color:var(--s5)">S5</span>5 bases × 2 tables</li>
+        <li><span class="scen" style="color:var(--s10)">S10</span>10 bases × 1 table</li>
+        <li><span class="scen" style="color:var(--s5c)">S5c</span>S5, 1 connexion par base</li>
+      </ul></div>
+    <div class="card"><h3>Stack</h3>
+      <ul class="clean"><li>Kotlin 2.4.10, Room <b>3.0.2</b> (<code>androidx.room3</code>)</li><li><code>BundledSQLiteDriver</code> (sqlite-bundled 2.6.2)</li><li>WAL, pool par défaut : 1 writer + 4 readers par base</li><li>2 000 lignes par table, payload d'environ 210 octets</li></ul></div>
+    <div class="card"><h3>Protocole</h3>
+      <ul class="clean"><li>1 <b>process neuf</b> par mesure</li><li>Android : APK release non debuggable, lancé avec <code>am start -S</code></li><li>iOS : exécutable K/N lancé avec <code>simctl spawn</code></li><li>20 runs par scénario, scénarios alternés, warm-up écarté</li><li>Médiane + IQR</li></ul></div>
+    <div class="card"><h3>Environnement</h3>
+      <ul class="clean"><li>Mac M3 Max, 36 Go, macOS 26.7</li><li>Émulateur Android 16 (API 36), arm64, 4 cœurs</li><li>Simulateur iPhone 17, iOS 26.5</li></ul></div>
+  </div>
+
+  <h2>Limites</h2>
+  <div class="card"><ul class="clean">
+    <li>Les mesures tournent sur un émulateur et un simulateur sur Mac, pas sur de vrais appareils. Les valeurs absolues sont donc optimistes, mais la <b>comparaison entre scénarios</b> reste valable : même machine, même build, scénarios alternés.</li>
+    <li>La mémoire « fin » est un <b>pire cas</b> : toutes les connexions sont ouvertes et tous les caches sont remplis par des scans complets.</li>
+    <li>L'accès multi-process (App Group iOS) n'est pas mesuré.</li>
+  </ul></div>
+
+  <h2>Sources</h2>
+  <div class="card"><ul class="clean">
+    <li><a href="https://developer.android.com/training/data-storage/room">Room – Save data in a local database</a> : « <i>Each RoomDatabase instance is fairly expensive</i> ». La recommandation vise les instances multiples d'une même base (singleton).</li>
+    <li><a href="https://www.sqlite.org/pragma.html#pragma_cache_size">SQLite – PRAGMA cache_size</a> : par défaut <code>-2000</code>, soit ~2 Mo <b>par connexion</b>. C'est un plafond, pas une allocation fixe.</li>
+    <li><a href="https://www.sqlite.org/wal.html">SQLite – Write-Ahead Logging</a> : un seul writer à la fois par base.</li>
+    <li><a href="https://developer.android.com/topic/performance/sqlite-performance-best-practices">Android – SQLite performance best practices</a></li>
+    <li><a href="https://developer.android.com/reference/kotlin/androidx/room/RoomDatabase.Builder#setMultipleConnectionPool(kotlin.Int,kotlin.Int)">RoomDatabase.Builder.setMultipleConnectionPool</a></li>
+  </ul></div>
+
+  <footer>Données brutes : <code>results/*.jsonl</code> · Régénérer : <code>python3 scripts/report.py</code> · Code : <code>shared/src/commonMain/kotlin/bench/Bench.kt</code></footer>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+const SCEN = ["S1", "S2", "S5", "S10", "S5c"];
+const COLORS = { S1: "var(--s1)", S2: "var(--s2)", S5: "var(--s5)", S10: "var(--s10)", S5c: "var(--s5c)" };
+const PLATFORMS = Object.keys(DATA);
+const LABEL = { ios: "iOS", android: "Android" };
+const METRICS = {
+  common: [
+    ["openMs", "Ouverture", "ms", "build() + 1re requête de chaque base"],
+    ["observeMs", "Mise en place des Flow", "ms", "un Flow par table → 1re émission"],
+    ["writeAllMs", "Écriture sur toutes les tables", "ms", "200 actions × 10 tables, 1 transaction par base (pire cas)"],
+    ["writeOneMs", "Écriture sur 1 table", "ms", "200 transactions sur t0"],
+    ["readMs", "Lectures concurrentes", "ms", "8 coroutines × 10 itérations + scans"],
+  ],
+  ios: [["footprintOpenKb", "Mémoire après ouverture", "Mo", "phys_footprint"], ["footprintEndKb", "Mémoire en fin de run", "Mo", "phys_footprint, pire cas"]],
+  android: [["pssOpenKb", "Mémoire après ouverture", "Mo", "PSS totale"], ["pssEndKb", "Mémoire en fin de run", "Mo", "PSS totale, pire cas"],
+            ["nativeHeapEndKb", "Heap natif en fin de run", "Mo", "là où vit SQLite"]],
+};
+
+const q = (arr, p) => { const s = [...arr].sort((a, b) => a - b); const i = (s.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return s[lo] + (s[hi] - s[lo]) * (i - lo); };
+function stats(platform, key) {
+  const out = {};
+  for (const s of SCEN) {
+    let v = DATA[platform].filter(r => r.scenario === s && r[key] != null).map(r => r[key]);
+    if (key.endsWith("Kb")) v = v.map(x => x / 1024);
+    if (v.length) out[s] = { med: q(v, .5), q1: q(v, .25), q3: q(v, .75), n: v.length };
+  }
+  return out;
+}
+const metricsFor = p => [...METRICS.common, ...METRICS[p]];
+const fmt = (x, d = 1) => x.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const sign = x => (x > 0 ? "+" : x < 0 ? "−" : "±") + fmt(Math.abs(x));
+
+function barChart(st, unit, { highlight = [], height = 210 } = {}) {
+  const W = 360, H = height, padL = 44, padB = 26, padT = 18;
+  const max = Math.max(...Object.values(st).map(s => s.q3)) * 1.12 || 1;
+  const keys = SCEN.filter(s => st[s]);
+  const bw = (W - padL - 10) / keys.length;
+  const y = v => padT + (H - padT - padB) * (1 - v / max);
+  let g = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = max * i / 4, yy = y(v);
+    g += `<line x1="${padL}" x2="${W - 6}" y1="${yy}" y2="${yy}" stroke="var(--line)"/><text x="${padL - 6}" y="${yy + 4}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(v, v < 10 ? 1 : 0)}</text>`;
+  }
+  keys.forEach((s, i) => {
+    const d = st[s], x = padL + i * bw + bw * .18, w = bw * .64, dim = highlight.length && !highlight.includes(s);
+    g += `<g opacity="${dim ? .35 : 1}"><rect x="${x}" y="${y(d.med)}" width="${w}" height="${y(0) - y(d.med)}" rx="5" fill="${COLORS[s]}"><title>${s}: ${fmt(d.med)} ${unit} (Q1 ${fmt(d.q1)} – Q3 ${fmt(d.q3)}, n=${d.n})</title></rect>
+      <line x1="${x + w / 2}" x2="${x + w / 2}" y1="${y(d.q1)}" y2="${y(d.q3)}" stroke="var(--text)" stroke-width="1.5" opacity=".7"/>
+      <line x1="${x + w / 2 - 5}" x2="${x + w / 2 + 5}" y1="${y(d.q1)}" y2="${y(d.q1)}" stroke="var(--text)" opacity=".7"/>
+      <line x1="${x + w / 2 - 5}" x2="${x + w / 2 + 5}" y1="${y(d.q3)}" y2="${y(d.q3)}" stroke="var(--text)" opacity=".7"/>
+      <text x="${x + w / 2}" y="${y(d.q3) - 5}" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--text)">${fmt(d.med)}</text>
+      <text x="${x + w / 2}" y="${H - 8}" text-anchor="middle" font-size="11" font-weight="700" fill="${COLORS[s]}">${s}</text></g>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}">${g}</svg>`;
+}
+
+function renderKpis() {
+  const row = (key, unit) => PLATFORMS.map(p => {
+    const st = stats(p, key); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> ${unit}</small></div></div>`;
+  }).join("");
+  const memKey = p => (p === "ios" ? "footprintOpenKb" : "pssOpenKb");
+  const memRow = PLATFORMS.map(p => { const st = stats(p, memKey(p)); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> Mo</small></div></div>`; }).join("");
+  const perAction = PLATFORMS.map(p => { const st = stats(p, "writeAllMs"); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign((st.S2.med - st.S1.med) / 200)}<small> ms</small></div></div>`; }).join("");
+  document.getElementById("kpis").innerHTML = `
+    <div class="card"><div class="muted">Ouverture, 2 bases vs 1</div><div class="kpi-row">${row("openMs", "ms")}</div></div>
+    <div class="card"><div class="muted">Mémoire après ouverture, 2 bases vs 1</div><div class="kpi-row">${memRow}</div></div>
+    <div class="card"><div class="muted">Par action écrivant dans les 2 bases</div><div class="kpi-row">${perAction}</div></div>`;
+}
+
+function renderInsight() {
+  const p = PLATFORMS.includes("android") ? "android" : PLATFORMS[0];
+  const key = p === "ios" ? "footprintEndKb" : "pssEndKb";
+  const st = stats(p, key);
+  document.getElementById("insightChart").innerHTML =
+    `<div class="muted" style="font-size:13px">${LABEL[p]} · mémoire en fin de run (Mo, delta) — S1 vs S5 vs S5c</div>` +
+    barChart({ S1: st.S1, S5: st.S5, S5c: st.S5c }, "Mo", { height: 230 }) +
+    `<div class="muted" style="font-size:13px">S5 : <b style="color:var(--s5)">${sign(st.S5.med - st.S1.med)} Mo</b> · S5c : <b style="color:var(--s5c)">${sign(st.S5c.med - st.S1.med)} Mo</b></div>`;
+}
+
+let current = PLATFORMS.includes("android") ? "android" : PLATFORMS[0];
+function render() {
+  document.getElementById("platformSeg").innerHTML = PLATFORMS.map(p => `<button class="${p === current ? "on" : ""}" data-p="${p}">${LABEL[p]} · ${DATA[p][0].platform}</button>`).join("");
+  document.querySelectorAll("#platformSeg button").forEach(b => b.onclick = () => { current = b.dataset.p; render(); });
+  document.getElementById("legend").innerHTML = SCEN.map(s => `<span><i style="background:${COLORS[s]}"></i>${s}</span>`).join("") + `<span class="muted">· barre = médiane, trait = Q1–Q3</span>`;
+  const ms = metricsFor(current);
+  document.getElementById("charts").innerHTML = ms.map(([k, t, u, d]) =>
+    `<div class="card chart"><h3>${t} <span class="muted" style="font-weight:400">(${u})</span></h3><div class="muted" style="font-size:12.5px">${d}</div>${barChart(stats(current, k), u)}</div>`).join("");
+  let h = `<tr><th>Métrique</th>${SCEN.map(s => `<th style="color:${COLORS[s]}">${s}</th>`).join("")}</tr>`;
+  for (const [k, t, u] of ms) {
+    const st = stats(current, k);
+    h += `<tr><td>${t} <span class="muted">(${u})</span></td>${SCEN.map(s => st[s] ? `<td>${fmt(st[s].med)}<span class="iqr">${fmt(st[s].q1)}–${fmt(st[s].q3)}</span></td>` : "<td>–</td>").join("")}</tr>`;
+    h += `<tr><td class="muted" style="padding-left:22px">Δ vs S1</td>${SCEN.map(s => {
+      if (!st[s] || s === "S1") return `<td class="muted">—</td>`;
+      const d = st[s].med - st.S1.med, rel = d / st.S1.med;
+      const cls = d <= 0 ? "neg" : rel > 1 ? "big" : "pos";
+      return `<td class="delta ${cls}">${sign(d)} <span class="iqr">${rel >= 0 ? "+" : "−"}${Math.round(Math.abs(rel) * 100)} %</span></td>`;
+    }).join("")}</tr>`;
+  }
+  document.getElementById("table").innerHTML = h;
+}
+renderKpis(); renderInsight(); render();
+</script>
+</body>
+</html>
