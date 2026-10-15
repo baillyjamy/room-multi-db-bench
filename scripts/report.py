@@ -12,7 +12,7 @@ def read(name):
 
 
 data, large = {}, {}
-for f in ("android", "ios-app", "ios"):
+for f in ("android", "ios", "macos", "jvm"):
     rows = read(f)
     if rows is not None:
         data[f] = [r for r in rows if r.get("mode") == "run"]

@@ -36,9 +36,9 @@ Source: `results/android.jsonl` — runs per scenario: S1: 20, S2: 20, S5: 20, S
 | pssOpenKb (MB) | +0.9 | +4.9 | +9.7 | +4.8 |
 | pssEndKb (MB) | +8.1 | +26.6 | +27.0 | +1.1 |
 
-## ios-26.5 (app)
+## ios-26.5
 
-Source: `results/ios-app.jsonl` — runs per scenario: S1: 20, S2: 20, S5: 20, S10: 20, S5c: 20
+Source: `results/ios.jsonl` — runs per scenario: S1: 20, S2: 20, S5: 20, S10: 20, S5c: 20
 
 | Metric | S1 | S2 | S5 | S10 | S5c |
 |---|---:|---:|---:|---:|---:|
@@ -62,31 +62,61 @@ Source: `results/ios-app.jsonl` — runs per scenario: S1: 20, S2: 20, S5: 20, S
 | footprintOpenKb (MB) | +1.0 | +4.7 | +10.8 | +4.7 |
 | footprintEndKb (MB) | +9.0 | +36.8 | +43.4 | +12.4 |
 
-## ios-26.5
+## macos-26.7
 
-Source: `results/ios.jsonl` — runs per scenario: S1: 20, S2: 20, S5: 20, S10: 20, S5c: 20
+Source: `results/macos.jsonl` — runs per scenario: S1: 20, S2: 20, S5: 20, S10: 20, S5c: 20
 
 | Metric | S1 | S2 | S5 | S10 | S5c |
 |---|---:|---:|---:|---:|---:|
-| openMs (ms) | 3.4 <sub>(3.1–3.8)</sub> | 6.0 <sub>(4.6–7.2)</sub> | 12.6 <sub>(10.5–16.2)</sub> | 23.3 <sub>(20.4–29.0)</sub> | 15.7 <sub>(10.2–29.6)</sub> |
-| observeMs (ms) | 8.5 <sub>(6.8–12.2)</sub> | 8.5 <sub>(7.7–12.1)</sub> | 7.7 <sub>(5.8–9.5)</sub> | 6.9 <sub>(5.9–8.2)</sub> | 4.7 <sub>(3.2–6.0)</sub> |
-| writeAllMs (ms) | 88.8 <sub>(86.3–98.8)</sub> | 102.7 <sub>(91.9–110.4)</sub> | 173.1 <sub>(160.6–208.9)</sub> | 283.0 <sub>(259.1–305.9)</sub> | 124.6 <sub>(108.2–269.4)</sub> |
-| writeOneMs (ms) | 22.4 <sub>(17.2–27.7)</sub> | 19.6 <sub>(15.9–27.1)</sub> | 20.9 <sub>(19.8–24.6)</sub> | 19.1 <sub>(16.6–25.7)</sub> | 20.4 <sub>(19.0–26.4)</sub> |
-| readMs (ms) | 92.6 <sub>(88.2–101.4)</sub> | 91.2 <sub>(79.8–97.6)</sub> | 73.8 <sub>(69.5–78.6)</sub> | 75.0 <sub>(70.6–79.5)</sub> | 94.7 <sub>(85.9–98.5)</sub> |
-| footprintOpenKb (MB) | 2.3 <sub>(1.8–2.9)</sub> | 3.5 <sub>(2.6–4.3)</sub> | 7.1 <sub>(5.4–8.8)</sub> | 13.2 <sub>(10.1–16.2)</sub> | 7.1 <sub>(5.4–8.8)</sub> |
-| footprintEndKb (MB) | 20.2 <sub>(19.8–22.1)</sub> | 29.1 <sub>(26.1–31.1)</sub> | 56.3 <sub>(50.9–59.7)</sub> | 61.7 <sub>(54.7–71.2)</sub> | 33.1 <sub>(30.2–37.0)</sub> |
+| openMs (ms) | 6.5 <sub>(3.7–9.3)</sub> | 7.8 <sub>(5.4–10.9)</sub> | 16.2 <sub>(14.6–18.3)</sub> | 17.9 <sub>(14.6–22.2)</sub> | 9.9 <sub>(9.3–11.2)</sub> |
+| observeMs (ms) | 10.0 <sub>(7.4–13.9)</sub> | 8.4 <sub>(5.5–12.7)</sub> | 7.9 <sub>(7.2–11.6)</sub> | 5.4 <sub>(3.0–6.7)</sub> | 6.4 <sub>(4.8–12.0)</sub> |
+| writeAllMs (ms) | 71.5 <sub>(62.5–76.3)</sub> | 84.1 <sub>(79.1–87.2)</sub> | 149.4 <sub>(135.1–157.0)</sub> | 235.9 <sub>(217.8–249.3)</sub> | 115.6 <sub>(97.5–297.2)</sub> |
+| writeOneMs (ms) | 14.9 <sub>(13.0–18.6)</sub> | 15.7 <sub>(13.7–16.3)</sub> | 16.7 <sub>(15.8–18.3)</sub> | 13.6 <sub>(13.3–14.1)</sub> | 16.3 <sub>(15.7–18.6)</sub> |
+| readMs (ms) | 94.5 <sub>(92.7–96.3)</sub> | 88.6 <sub>(84.5–91.9)</sub> | 77.1 <sub>(70.9–80.2)</sub> | 76.2 <sub>(73.3–78.9)</sub> | 94.1 <sub>(92.3–100.7)</sub> |
+| footprintOpenKb (MB) | 2.4 <sub>(1.9–3.0)</sub> | 3.5 <sub>(2.7–4.3)</sub> | 7.2 <sub>(5.6–8.8)</sub> | 13.2 <sub>(10.3–16.1)</sub> | 7.1 <sub>(5.5–8.8)</sub> |
+| footprintEndKb (MB) | 29.8 <sub>(28.6–31.2)</sub> | 39.3 <sub>(38.2–40.9)</sub> | 71.7 <sub>(63.1–73.5)</sub> | 76.9 <sub>(62.0–89.1)</sub> | 32.3 <sub>(30.4–34.1)</sub> |
 
 **Δ vs S1 (median)**
 
 | Metric | S2 | S5 | S10 | S5c |
 |---|---:|---:|---:|---:|
-| openMs (ms) | +2.6 | +9.2 | +19.9 | +12.4 |
-| observeMs (ms) | ±0.0 | -0.9 | -1.7 | -3.8 |
-| writeAllMs (ms) | +13.9 | +84.3 | +194.1 | +35.8 |
-| writeOneMs (ms) | -2.8 | -1.5 | -3.2 | -2.0 |
-| readMs (ms) | -1.4 | -18.8 | -17.6 | +2.1 |
-| footprintOpenKb (MB) | +1.1 | +4.8 | +10.9 | +4.8 |
-| footprintEndKb (MB) | +8.9 | +36.1 | +41.4 | +12.9 |
+| openMs (ms) | +1.3 | +9.7 | +11.5 | +3.5 |
+| observeMs (ms) | -1.6 | -2.1 | -4.6 | -3.6 |
+| writeAllMs (ms) | +12.6 | +77.9 | +164.4 | +44.2 |
+| writeOneMs (ms) | +0.8 | +1.8 | -1.3 | +1.4 |
+| readMs (ms) | -6.0 | -17.5 | -18.4 | -0.5 |
+| footprintOpenKb (MB) | +1.1 | +4.7 | +10.7 | +4.7 |
+| footprintEndKb (MB) | +9.5 | +41.9 | +47.1 | +2.5 |
+
+## jvm-25-macosx
+
+Source: `results/jvm.jsonl` — runs per scenario: S1: 20, S2: 20, S5: 20, S10: 20, S5c: 20
+
+| Metric | S1 | S2 | S5 | S10 | S5c |
+|---|---:|---:|---:|---:|---:|
+| openMs (ms) | 272.8 <sub>(261.2–342.0)</sub> | 261.9 <sub>(259.3–275.2)</sub> | 270.9 <sub>(263.8–284.1)</sub> | 284.5 <sub>(273.3–356.8)</sub> | 273.6 <sub>(268.8–300.2)</sub> |
+| observeMs (ms) | 35.5 <sub>(34.6–37.4)</sub> | 34.6 <sub>(32.8–36.0)</sub> | 34.2 <sub>(33.3–34.9)</sub> | 31.0 <sub>(29.6–32.0)</sub> | 32.7 <sub>(31.0–33.7)</sub> |
+| writeAllMs (ms) | 125.2 <sub>(121.8–134.3)</sub> | 131.8 <sub>(127.7–137.0)</sub> | 203.4 <sub>(198.9–210.4)</sub> | 290.3 <sub>(281.3–301.7)</sub> | 177.3 <sub>(164.2–334.0)</sub> |
+| writeOneMs (ms) | 27.9 <sub>(27.3–29.6)</sub> | 22.6 <sub>(21.9–24.1)</sub> | 25.8 <sub>(25.0–26.8)</sub> | 22.7 <sub>(22.4–23.7)</sub> | 23.0 <sub>(22.3–26.1)</sub> |
+| readMs (ms) | 66.5 <sub>(62.5–72.1)</sub> | 55.6 <sub>(51.0–59.9)</sub> | 47.8 <sub>(42.1–51.1)</sub> | 46.4 <sub>(41.7–48.3)</sub> | 62.1 <sub>(54.1–73.8)</sub> |
+| javaHeapOpenKb (MB) | 0.1 <sub>(0.1–0.1)</sub> | 0.1 <sub>(0.1–0.1)</sub> | 0.1 <sub>(0.1–0.1)</sub> | 0.1 <sub>(0.1–0.1)</sub> | 0.1 <sub>(0.1–0.1)</sub> |
+| javaHeapEndKb (MB) | 0.3 <sub>(0.3–0.4)</sub> | 0.3 <sub>(0.3–0.3)</sub> | 0.4 <sub>(0.4–0.4)</sub> | 0.4 <sub>(0.4–0.5)</sub> | 0.3 <sub>(0.3–0.4)</sub> |
+| rssOpenKb (MB) | 24.4 <sub>(23.8–24.8)</sub> | 25.6 <sub>(24.6–26.3)</sub> | 29.1 <sub>(27.6–30.6)</sub> | 35.9 <sub>(33.5–39.8)</sub> | 28.5 <sub>(27.4–30.2)</sub> |
+| rssEndKb (MB) | 69.0 <sub>(58.6–78.1)</sub> | 81.1 <sub>(67.7–85.9)</sub> | 107.9 <sub>(99.5–115.7)</sub> | 122.1 <sub>(108.5–135.7)</sub> | 77.9 <sub>(66.7–82.6)</sub> |
+
+**Δ vs S1 (median)**
+
+| Metric | S2 | S5 | S10 | S5c |
+|---|---:|---:|---:|---:|
+| openMs (ms) | -10.9 | -2.0 | +11.6 | +0.7 |
+| observeMs (ms) | -0.9 | -1.3 | -4.4 | -2.8 |
+| writeAllMs (ms) | +6.6 | +78.2 | +165.1 | +52.1 |
+| writeOneMs (ms) | -5.3 | -2.1 | -5.2 | -4.9 |
+| readMs (ms) | -10.9 | -18.7 | -20.1 | -4.4 |
+| javaHeapOpenKb (MB) | ±0.0 | ±0.0 | +0.1 | ±0.0 |
+| javaHeapEndKb (MB) | ±0.0 | +0.1 | +0.1 | ±0.0 |
+| rssOpenKb (MB) | +1.2 | +4.6 | +11.4 | +4.1 |
+| rssEndKb (MB) | +12.1 | +38.9 | +53.1 | +8.8 |
 
 ## android-36
 
@@ -128,9 +158,9 @@ Source: `results/android-large.jsonl` — runs per scenario: L1: 20, L2: 20
 | pssOpenKb (MB) | +1.1 |
 | pssEndKb (MB) | +5.8 |
 
-## ios-26.5 (app)
+## ios-26.5
 
-Source: `results/ios-app-large.jsonl` — runs per scenario: L1: 20, L2: 20
+Source: `results/ios-large.jsonl` — runs per scenario: L1: 20, L2: 20
 
 | Metric | L1 | L2 |
 |---|---:|---:|
@@ -160,34 +190,70 @@ Source: `results/ios-app-large.jsonl` — runs per scenario: L1: 20, L2: 20
 | footprintOpenKb (MB) | +0.8 |
 | footprintEndKb (MB) | +7.8 |
 
-## ios-26.5
+## macos-26.7
 
-Source: `results/ios-large.jsonl` — runs per scenario: L1: 20, L2: 20
+Source: `results/macos-large.jsonl` — runs per scenario: L1: 20, L2: 20
 
 | Metric | L1 | L2 |
 |---|---:|---:|
-| openMs (ms) | 5.6 <sub>(4.8–9.2)</sub> | 8.6 <sub>(7.8–11.6)</sub> |
-| weekQueryMs (ms) | 115.4 <sub>(111.8–132.8)</sub> | 115.2 <sub>(109.2–131.1)</sub> |
-| monthQueryMs (ms) | 121.0 <sub>(117.5–126.2)</sub> | 124.2 <sub>(116.2–129.0)</sub> |
-| agendaJoinMs (ms) | 270.6 <sub>(265.8–277.3)</sub> | 353.1 <sub>(342.0–366.5)</sub> |
-| searchContactsMs (ms) | 37.2 <sub>(36.1–38.6)</sub> | 36.0 <sub>(35.6–38.7)</sub> |
-| syncContactsMs (ms) | 19.5 <sub>(18.8–20.0)</sub> | 19.6 <sub>(18.9–20.8)</sub> |
-| syncCalendarMs (ms) | 246.7 <sub>(239.4–260.3)</sub> | 241.2 <sub>(236.5–256.6)</sub> |
-| parallelSyncMs (ms) | 260.6 <sub>(252.4–274.7)</sub> | 238.5 <sub>(236.0–243.7)</sub> |
-| footprintOpenKb (MB) | 2.8 <sub>(2.8–2.8)</sub> | 3.6 <sub>(3.6–3.6)</sub> |
-| footprintEndKb (MB) | 14.8 <sub>(14.3–15.1)</sub> | 22.3 <sub>(21.6–22.8)</sub> |
+| openMs (ms) | 4.2 <sub>(4.0–4.8)</sub> | 6.1 <sub>(4.8–9.0)</sub> |
+| weekQueryMs (ms) | 111.5 <sub>(107.9–116.6)</sub> | 114.0 <sub>(109.3–123.3)</sub> |
+| monthQueryMs (ms) | 123.9 <sub>(121.2–126.6)</sub> | 123.0 <sub>(119.0–127.8)</sub> |
+| agendaJoinMs (ms) | 271.4 <sub>(268.2–277.4)</sub> | 343.6 <sub>(340.6–349.3)</sub> |
+| searchContactsMs (ms) | 36.3 <sub>(35.9–37.9)</sub> | 35.1 <sub>(34.8–36.2)</sub> |
+| syncContactsMs (ms) | 15.4 <sub>(15.2–15.6)</sub> | 15.4 <sub>(15.0–15.8)</sub> |
+| syncCalendarMs (ms) | 151.3 <sub>(149.3–161.8)</sub> | 150.4 <sub>(147.1–158.0)</sub> |
+| parallelSyncMs (ms) | 163.8 <sub>(161.0–168.1)</sub> | 152.0 <sub>(147.8–158.1)</sub> |
+| footprintOpenKb (MB) | 2.8 <sub>(2.8–2.9)</sub> | 3.7 <sub>(3.6–3.7)</sub> |
+| footprintEndKb (MB) | 20.1 <sub>(18.9–23.1)</sub> | 26.6 <sub>(26.0–27.1)</sub> |
 
 **Δ vs L1 (median)**
 
 | Metric | L2 |
 |---|---:|
-| openMs (ms) | +3.1 |
-| weekQueryMs (ms) | -0.2 |
-| monthQueryMs (ms) | +3.2 |
-| agendaJoinMs (ms) | +82.6 |
+| openMs (ms) | +1.8 |
+| weekQueryMs (ms) | +2.6 |
+| monthQueryMs (ms) | -0.9 |
+| agendaJoinMs (ms) | +72.2 |
 | searchContactsMs (ms) | -1.2 |
-| syncContactsMs (ms) | +0.2 |
-| syncCalendarMs (ms) | -5.5 |
-| parallelSyncMs (ms) | -22.1 |
+| syncContactsMs (ms) | ±0.0 |
+| syncCalendarMs (ms) | -0.9 |
+| parallelSyncMs (ms) | -11.8 |
 | footprintOpenKb (MB) | +0.8 |
-| footprintEndKb (MB) | +7.5 |
+| footprintEndKb (MB) | +6.5 |
+
+## jvm-25-macosx
+
+Source: `results/jvm-large.jsonl` — runs per scenario: L1: 20, L2: 20
+
+| Metric | L1 | L2 |
+|---|---:|---:|
+| openMs (ms) | 249.4 <sub>(246.8–267.9)</sub> | 268.2 <sub>(257.2–311.4)</sub> |
+| weekQueryMs (ms) | 113.1 <sub>(108.2–130.3)</sub> | 114.4 <sub>(107.1–132.6)</sub> |
+| monthQueryMs (ms) | 104.5 <sub>(100.6–110.1)</sub> | 105.1 <sub>(103.4–111.3)</sub> |
+| agendaJoinMs (ms) | 286.1 <sub>(284.1–300.1)</sub> | 387.2 <sub>(380.6–400.3)</sub> |
+| searchContactsMs (ms) | 46.3 <sub>(45.9–48.3)</sub> | 43.7 <sub>(43.2–44.1)</sub> |
+| syncContactsMs (ms) | 19.3 <sub>(18.4–19.8)</sub> | 18.4 <sub>(18.0–18.8)</sub> |
+| syncCalendarMs (ms) | 159.1 <sub>(153.8–165.3)</sub> | 154.9 <sub>(153.0–158.6)</sub> |
+| parallelSyncMs (ms) | 167.3 <sub>(165.7–170.4)</sub> | 153.4 <sub>(150.4–165.2)</sub> |
+| javaHeapOpenKb (MB) | -0.3 <sub>(-0.3–-0.3)</sub> | -0.3 <sub>(-0.3–-0.3)</sub> |
+| javaHeapEndKb (MB) | -4.9 <sub>(-4.9–-4.9)</sub> | -4.9 <sub>(-4.9–-4.9)</sub> |
+| rssOpenKb (MB) | 16.1 <sub>(16.0–16.1)</sub> | 16.9 <sub>(16.7–17.0)</sub> |
+| rssEndKb (MB) | 49.2 <sub>(48.9–49.7)</sub> | 77.6 <sub>(76.3–78.0)</sub> |
+
+**Δ vs L1 (median)**
+
+| Metric | L2 |
+|---|---:|
+| openMs (ms) | +18.7 |
+| weekQueryMs (ms) | +1.4 |
+| monthQueryMs (ms) | +0.5 |
+| agendaJoinMs (ms) | +101.1 |
+| searchContactsMs (ms) | -2.6 |
+| syncContactsMs (ms) | -0.9 |
+| syncCalendarMs (ms) | -4.2 |
+| parallelSyncMs (ms) | -13.9 |
+| javaHeapOpenKb (MB) | ±0.0 |
+| javaHeapEndKb (MB) | +0.1 |
+| rssOpenKb (MB) | +0.8 |
+| rssEndKb (MB) | +28.4 |

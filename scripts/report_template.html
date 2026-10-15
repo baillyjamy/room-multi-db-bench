@@ -33,7 +33,7 @@
   .kpi-row > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 8px; }
   .kpi-row .kpi { font-size: 24px; margin: 0; white-space: nowrap; text-align: right; }
   .tag { display: inline-block; white-space: nowrap; flex: none; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; background: var(--panel2); color: var(--muted); }
-  .tag.android { color: var(--good); } .tag.ios, .tag.ios-app { color: var(--accent); }
+  .tag.android { color: var(--good); } .tag.ios { color: var(--accent); } .tag.macos { color: var(--s5c); } .tag.jvm { color: var(--warn); }
   .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 16px 0; position: sticky; top: 0; z-index: 5; padding: 10px 0; background: var(--bg); }
   .seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
   .seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 7px; color: var(--muted); font-weight: 600; font-size: 13px; }
@@ -88,7 +88,7 @@
   <section id="large">
   <h2>Gros volume : une vraie app calendrier</h2>
   <p class="lead">Jusqu'ici, les tables étaient petites. Ici on reproduit une vraie app calendrier avec une base d'environ 120 Mo : contacts, calendriers, événements et participants. <span class="scen" style="color:var(--s1);width:auto">L1</span> met tout dans <b>une seule base</b>. <span class="scen" style="color:var(--s2);width:auto">L2</span> sépare <b>deux bases</b> : contacts d'un côté, calendrier de l'autre. Sans clé étrangère entre les deux, l'agenda doit joindre les participants à leurs contacts <b>en mémoire</b>.</p>
-  <div id="largeEmpty" class="card muted">Données à venir : lancer la suite gros volume pour remplir <code>results/{android,ios-app,ios}-large.jsonl</code>.</div>
+  <div id="largeEmpty" class="card muted">Données à venir : lancer la suite gros volume pour remplir <code>results/{android,ios,macos,jvm}-large.jsonl</code>.</div>
   <div id="largeBody" hidden>
     <p class="muted" id="largeDataset"></p>
     <div class="grid cards" id="largeKpis"></div>
@@ -135,16 +135,17 @@
     <div class="card"><h3>Stack</h3>
       <ul class="clean"><li>Kotlin 2.4.10, Room <b>3.0.2</b> (<code>androidx.room3</code>)</li><li><code>BundledSQLiteDriver</code> (sqlite-bundled 2.6.2)</li><li>WAL, pool par défaut : 1 writer + 4 readers par base</li><li>2 000 lignes par table, payload d'environ 210 octets</li></ul></div>
     <div class="card"><h3>Protocole</h3>
-      <ul class="clean"><li>1 <b>process neuf</b> par mesure</li><li>Android : APK release non debuggable, lancé avec <code>am start -S</code></li><li>iOS (app) : vraie app SwiftUI (<code>iosApp/</code>) liant le framework Kotlin, relancée à chaque mesure avec <code>simctl launch --terminate-running-process</code></li><li>iOS (exécutable) : même code en exécutable K/N lancé avec <code>simctl spawn</code></li><li>20 runs par scénario, scénarios alternés, warm-up écarté</li><li>Médiane + IQR</li></ul></div>
+      <ul class="clean"><li>1 <b>process neuf</b> par mesure</li><li>Android : APK release non debuggable, lancé avec <code>am start -S</code></li><li>iOS : vraie app SwiftUI (<code>iosApp/</code>) liant le framework Kotlin, relancée à chaque mesure avec <code>simctl launch --terminate-running-process</code></li><li>macOS : exécutable Kotlin/Native <code>macosArm64</code> (release)</li><li>JVM desktop : distribution <code>installJvmDist</code>, une JVM neuve par mesure</li><li>20 runs par scénario, scénarios alternés, warm-up écarté</li><li>Médiane + IQR</li></ul></div>
     <div class="card"><h3>Environnement</h3>
-      <ul class="clean"><li>Mac M3 Max, 36 Go, macOS 26.7</li><li>Émulateur Android 16 (API 36), arm64, 4 cœurs</li><li>Simulateur iPhone 17, iOS 26.5</li></ul></div>
+      <ul class="clean"><li>Mac M3 Max, 36 Go, macOS 26.7</li><li>Émulateur Android 16 (API 36), arm64, 4 cœurs</li><li>Simulateur iPhone 17, iOS 26.5</li><li>macOS et JVM : directement sur le Mac (OpenJDK 25)</li></ul></div>
   </div>
 
   <h2>Limites</h2>
   <div class="card"><ul class="clean">
-    <li>Les mesures tournent sur un émulateur et un simulateur sur Mac, pas sur de vrais appareils. Les valeurs absolues sont donc optimistes, mais la <b>comparaison entre scénarios</b> reste valable : même machine, même build, scénarios alternés.</li>
+    <li>Les mesures mobiles tournent sur un émulateur et un simulateur sur Mac, pas sur de vrais appareils. Les valeurs absolues sont donc optimistes, mais la <b>comparaison entre scénarios</b> reste valable : même machine, même build, scénarios alternés.</li>
     <li>La mémoire « fin » est un <b>pire cas</b> : toutes les connexions sont ouvertes et tous les caches sont remplis par des scans complets.</li>
     <li>Gros volume : les données sont <b>synthétiques</b>. La volumétrie est réaliste, mais la distribution (participants par événement, calendriers) peut différer de celle d'une vraie app.</li>
+    <li>JVM : une JVM à froid par mesure (JIT, chargement des classes), d'où beaucoup de bruit sur l'ouverture. La RSS inclut la mémoire native que l'allocateur ne rend pas : à lire comme un ordre de grandeur.</li>
     <li>L'accès multi-process (App Group iOS) n'est pas mesuré.</li>
   </ul></div>
 
@@ -168,8 +169,8 @@ const LARGE = /*__LARGE__*/null || {};
 const LSCEN = ["L1", "L2"];
 const COLORS = { S1: "var(--s1)", S2: "var(--s2)", S5: "var(--s5)", S10: "var(--s10)", S5c: "var(--s5c)", L1: "var(--s1)", L2: "var(--s2)" };
 const PLATFORMS = Object.keys(DATA);
-const LABEL = { ios: "iOS (exécutable)", "ios-app": "iOS (app)", android: "Android" };
-const isIos = p => p.startsWith("ios");
+const LABEL = { android: "Android", ios: "iOS", macos: "macOS (natif)", jvm: "JVM desktop" };
+const MEM = { android: "pss", ios: "footprint", macos: "footprint", jvm: "rss" };
 const METRICS = {
   common: [
     ["openMs", "Ouverture", "ms", "build() + 1re requête de chaque base"],
@@ -179,6 +180,9 @@ const METRICS = {
     ["readMs", "Lectures concurrentes", "ms", "8 coroutines × 10 itérations + scans"],
   ],
   ios: [["footprintOpenKb", "Mémoire après ouverture", "Mo", "phys_footprint"], ["footprintEndKb", "Mémoire en fin de run", "Mo", "phys_footprint, pire cas"]],
+  macos: [["footprintOpenKb", "Mémoire après ouverture", "Mo", "phys_footprint"], ["footprintEndKb", "Mémoire en fin de run", "Mo", "phys_footprint, pire cas"]],
+  jvm: [["rssOpenKb", "Mémoire après ouverture", "Mo", "RSS du process JVM"], ["rssEndKb", "Mémoire en fin de run", "Mo", "RSS du process JVM, pire cas"],
+        ["javaHeapEndKb", "Heap Java en fin de run", "Mo", "SQLite vit hors du heap (natif)"]],
   android: [["pssOpenKb", "Mémoire après ouverture", "Mo", "PSS totale"], ["pssEndKb", "Mémoire en fin de run", "Mo", "PSS totale, pire cas"],
             ["nativeHeapEndKb", "Heap natif en fin de run", "Mo", "là où vit SQLite"]],
   large: [
@@ -203,9 +207,9 @@ function stats(rows, key, scen = SCEN) {
   }
   return out;
 }
-const metricsFor = p => [...METRICS.common, ...METRICS[isIos(p) ? "ios" : p]];
-const largeMetricsFor = p => [...METRICS.large, ...METRICS[isIos(p) ? "ios" : p]];
-const endMemKey = p => (isIos(p) ? "footprintEndKb" : "pssEndKb");
+const metricsFor = p => [...METRICS.common, ...METRICS[p]];
+const largeMetricsFor = p => [...METRICS.large, ...METRICS[p]];
+const endMemKey = p => MEM[p] + "EndKb";
 const fmt = (x, d = 1) => x.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
 const sign = x => (x > 0 ? "+" : x < 0 ? "−" : "±") + fmt(Math.abs(x));
 
@@ -236,7 +240,7 @@ function renderKpis() {
   const row = (key, unit) => PLATFORMS.map(p => {
     const st = stats(DATA[p], key); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> ${unit}</small></div></div>`;
   }).join("");
-  const memKey = p => (isIos(p) ? "footprintOpenKb" : "pssOpenKb");
+  const memKey = p => MEM[p] + "OpenKb";
   const memRow = PLATFORMS.map(p => { const st = stats(DATA[p], memKey(p)); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign(st.S2.med - st.S1.med)}<small> Mo</small></div></div>`; }).join("");
   const perAction = PLATFORMS.map(p => { const st = stats(DATA[p], "writeAllMs"); return `<div><span class="tag ${p}">${LABEL[p]}</span><div class="kpi">${sign((st.S2.med - st.S1.med) / 200)}<small> ms</small></div></div>`; }).join("");
   document.getElementById("kpis").innerHTML = `
@@ -287,7 +291,7 @@ function render() {
   document.getElementById("table").innerHTML = tableHtml(DATA[current], ms, SCEN);
 }
 
-const LPLATFORMS = ["android", "ios-app", "ios"].filter(p => LARGE[p] && LARGE[p].runs.length);
+const LPLATFORMS = ["android", "ios", "macos", "jvm"].filter(p => LARGE[p] && LARGE[p].runs.length);
 let currentLarge = LPLATFORMS[0];
 function checksumBadge(p) {
   const runs = LARGE[p].runs.filter(r => LSCEN.includes(r.scenario) && r.checksum != null);

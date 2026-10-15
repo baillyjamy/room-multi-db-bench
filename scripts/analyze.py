@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Summarise room-multi-db-bench JSONL results as Markdown.
 
-Usage: python3 scripts/analyze.py results/android.jsonl results/ios.jsonl > RESULTS.md
-       python3 scripts/analyze.py results/android-large.jsonl results/ios-large.jsonl
+Usage: python3 scripts/analyze.py results/{android,ios,macos,jvm}.jsonl results/{android,ios,macos,jvm}-large.jsonl > RESULTS.md
 
 Reads "run" lines (small suite, baseline S1) and "large-run" lines (large-volume
 suite, scenarios L1/L2, baseline L1). Seed lines are ignored.
@@ -127,7 +126,7 @@ def render(path, runs):
     scenarios = [s for s in order if s in by_scenario]
     scenarios += sorted((s for s in by_scenario if s not in order), key=scenario_sort_key)
 
-    platforms = sorted({str(r["platform"]) + (" (app)" if r.get("host") == "app" else "") for r in runs if r.get("platform")})
+    platforms = sorted({str(r["platform"]) for r in runs if r.get("platform")})
     title = ", ".join(platforms) if platforms else path
     counts = ", ".join(f"{s}: {len(by_scenario[s])}" for s in scenarios) or "no runs"
     out.append(f"## {title}")

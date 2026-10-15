@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -15,13 +16,26 @@ kotlin {
     }
 
     iosSimulatorArm64 {
-        binaries.executable {
-            entryPoint = "bench.main"
-        }
         // Static framework linked by the SwiftUI app in iosApp/.
         binaries.framework {
             baseName = "Shared"
             isStatic = true
+        }
+    }
+
+    macosArm64 {
+        binaries.executable {
+            entryPoint = "bench.main"
+        }
+    }
+
+    jvm {
+        compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        binaries {
+            executable {
+                mainClass.set("bench.MainKt")
+            }
         }
     }
 
@@ -31,8 +45,11 @@ kotlin {
             implementation(libs.sqlite.bundled)
             implementation(libs.coroutines.core)
         }
-        getByName("iosSimulatorArm64Main") {
-            kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/iosSimulatorArm64/iosSimulatorArm64Main/kotlin"))
+        // KSP output of native targets is not registered automatically in this setup.
+        listOf("iosSimulatorArm64", "macosArm64").forEach { target ->
+            getByName("${target}Main") {
+                kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/$target/${target}Main/kotlin"))
+            }
         }
     }
 
@@ -47,6 +64,9 @@ kotlin {
 dependencies {
     add("kspAndroid", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
+    add("kspMacosArm64", libs.room.compiler)
+    add("kspJvm", libs.room.compiler)
 }
 
 tasks.named("compileKotlinIosSimulatorArm64") { dependsOn("kspKotlinIosSimulatorArm64") }
+tasks.named("compileKotlinMacosArm64") { dependsOn("kspKotlinMacosArm64") }

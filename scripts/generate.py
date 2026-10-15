@@ -93,7 +93,7 @@ for cid, (base, extra) in CONTROL.items():
 common.append('    else -> error("Unknown scenario $scenario")\n}\n')
 (ROOT / "commonMain/kotlin/bench/Generated.kt").write_text("".join(common))
 
-for src in ("androidMain", "iosMain"):
+for src in ("androidMain", "appleMain", "jvmMain"):
     out = [HEADER, "import androidx.room3.Room\nimport androidx.room3.RoomDatabase\n\n"]
     for dbs in SCENARIOS.values():
         for cls, _ in dbs:
